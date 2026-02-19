@@ -1,5 +1,6 @@
-import { Church, Heart, MapPin, Phone, Mail } from "lucide-react";
+import { Heart, MapPin, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
+import logo from "@/assets/logo-vale.png";
 
 const Footer = () => {
   return (
@@ -8,7 +9,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <Church className="h-6 w-6 text-primary" />
+              <img src={logo} alt="Vale Church Lavras" className="h-8 w-8 rounded-full object-cover" />
               <span className="font-display text-lg font-bold">Vale Church Lavras</span>
             </div>
             <p className="text-secondary-foreground/70 text-sm leading-relaxed">
