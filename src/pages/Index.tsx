@@ -46,13 +46,13 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/eventos">
-              <Button size="lg" className="gradient-gold text-secondary font-semibold shadow-gold px-8">
+              <Button size="lg" className="bg-white/20 backdrop-blur-sm border border-white/50 text-white font-semibold hover:bg-white/30 px-8">
                 <Calendar className="mr-2 h-5 w-5" />
                 Ver Eventos
               </Button>
             </Link>
             <Link to="/sobre">
-              <Button size="lg" variant="outline" className="border-white/50 text-white hover:bg-white/20 hover:text-white">
+              <Button size="lg" className="bg-white/20 backdrop-blur-sm border border-white/50 text-white font-semibold hover:bg-white/30">
                 Conheça Nossa Igreja
               </Button>
             </Link>
