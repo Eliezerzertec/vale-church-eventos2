@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Church, LogIn } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import logo from "@/assets/logo-vale.png";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -48,7 +49,7 @@ const AdminLogin = () => {
     <div className="min-h-screen bg-secondary flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Church className="h-12 w-12 text-primary mx-auto mb-3" />
+          <img src={logo} alt="Vale Church Lavras" className="h-16 w-auto mx-auto mb-3" />
           <h1 className="font-display text-2xl font-bold text-secondary-foreground">Painel Admin</h1>
           <p className="text-secondary-foreground/60 text-sm mt-1">Vale Church Lavras</p>
         </div>
