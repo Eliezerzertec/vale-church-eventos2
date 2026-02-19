@@ -33,7 +33,7 @@ const Index = () => {
       <section className="relative h-[85vh] flex items-center justify-center overflow-hidden">
         <img src={heroImage} alt="Vale Church" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 gradient-hero" />
-        <div className="relative z-10 text-center px-4 animate-fade-in">
+        <div className="relative z-10 text-center px-4 animate-fade-in bg-black/20 backdrop-blur-sm rounded-2xl py-10 px-8 max-w-2xl mx-auto">
           <p className="text-primary tracking-[0.3em] uppercase text-sm font-medium mb-4">
             Somos Movidos Por Amor
           </p>
