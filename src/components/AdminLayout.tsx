@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Church, LayoutDashboard, Calendar, Users, CreditCard, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, CreditCard, LogOut } from "lucide-react";
+import logo from "@/assets/logo-vale.png";
 import { Button } from "@/components/ui/button";
 
 const AdminLayout = () => {
@@ -64,7 +65,7 @@ const AdminLayout = () => {
       <aside className="w-64 bg-secondary border-r border-border/50 flex flex-col shrink-0">
         <div className="p-4 border-b border-border/30">
           <Link to="/" className="flex items-center gap-2">
-            <Church className="h-7 w-7 text-primary" />
+            <img src={logo} alt="Vale Church Lavras" className="h-8 w-8 rounded-full object-cover" />
             <div>
               <span className="font-display text-sm font-bold text-secondary-foreground">Vale Church</span>
               <span className="block text-[10px] text-primary tracking-widest uppercase">Admin</span>
