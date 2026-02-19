@@ -49,7 +49,7 @@ const AdminLogin = () => {
     <div className="min-h-screen bg-secondary flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src={logo} alt="Vale Church Lavras" className="h-16 w-auto mx-auto mb-3" />
+          <img src={logo} alt="Vale Church Lavras" className="h-20 w-20 rounded-full object-cover mx-auto mb-3 shadow-gold" />
           <h1 className="font-display text-2xl font-bold text-secondary-foreground">Painel Admin</h1>
           <p className="text-secondary-foreground/60 text-sm mt-1">Vale Church Lavras</p>
         </div>
