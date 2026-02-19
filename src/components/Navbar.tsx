@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Church } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/logo-vale.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,11 +18,7 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-secondary/95 backdrop-blur-md border-b border-church-gold/20">
       <div className="container mx-auto px-4 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2">
-          <Church className="h-8 w-8 text-primary" />
-          <div>
-            <span className="font-display text-lg font-bold text-secondary-foreground">Vale Church</span>
-            <span className="block text-xs text-church-gold-light tracking-widest uppercase">Lavras</span>
-          </div>
+          <img src={logo} alt="Vale Church Lavras" className="h-10 w-auto" />
         </Link>
 
         {/* Desktop */}
