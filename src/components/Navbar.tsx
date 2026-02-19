@@ -57,9 +57,10 @@ const Navbar = () => {
           <Link to="/admin/login">
             <Button
               size="sm"
-              variant="outline"
-              className={`border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground ${
-                transparent ? "border-white/30 text-white hover:bg-white/10 hover:text-white" : ""
+              className={`backdrop-blur-sm font-semibold ${
+                transparent
+                  ? "bg-white/20 border border-white/50 text-white hover:bg-white/30"
+                  : "bg-primary/20 border border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
               }`}
             >
               Painel Admin
