@@ -1,12 +1,22 @@
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-vale.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const isHome = location.pathname === "/";
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const transparent = isHome && !scrolled && !isOpen;
 
   const links = [
     { href: "/", label: "Início" },
@@ -15,7 +25,13 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-secondary/95 backdrop-blur-md border-b border-church-gold/20">
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        transparent
+          ? "bg-transparent border-b border-transparent"
+          : "bg-secondary/95 backdrop-blur-md border-b border-primary/20"
+      }`}
+    >
       <div className="container mx-auto px-4 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2">
           <img src={logo} alt="Vale Church Lavras" className="h-10 w-10 rounded-full object-cover" />
@@ -28,14 +44,24 @@ const Navbar = () => {
               key={link.href}
               to={link.href}
               className={`text-sm font-medium transition-colors hover:text-primary ${
-                location.pathname === link.href ? "text-primary" : "text-secondary-foreground/80"
+                location.pathname === link.href
+                  ? "text-primary"
+                  : transparent
+                  ? "text-white/90"
+                  : "text-secondary-foreground/80"
               }`}
             >
               {link.label}
             </Link>
           ))}
           <Link to="/admin/login">
-            <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground">
+            <Button
+              size="sm"
+              variant="outline"
+              className={`border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground ${
+                transparent ? "border-white/30 text-white hover:bg-white/10 hover:text-white" : ""
+              }`}
+            >
               Painel Admin
             </Button>
           </Link>
@@ -44,7 +70,7 @@ const Navbar = () => {
         {/* Mobile toggle */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-secondary-foreground"
+          className={`md:hidden ${transparent ? "text-white" : "text-secondary-foreground"}`}
         >
           {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
@@ -52,7 +78,7 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden bg-secondary border-t border-church-gold/10 animate-fade-in">
+        <div className="md:hidden bg-secondary border-t border-primary/10 animate-fade-in">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-3">
             {links.map((link) => (
               <Link
