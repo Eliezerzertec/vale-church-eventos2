@@ -52,7 +52,7 @@ const Index = () => {
               </Button>
             </Link>
             <Link to="/sobre">
-              <Button size="lg" variant="outline" className="border-primary/50 text-secondary-foreground/90 hover:bg-primary/20 hover:text-primary-foreground">
+              <Button size="lg" variant="outline" className="border-white/50 text-white hover:bg-white/20 hover:text-white">
                 Conheça Nossa Igreja
               </Button>
             </Link>
