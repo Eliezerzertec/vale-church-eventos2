@@ -36,11 +36,11 @@ const Index = () => {
         <div className="absolute inset-0 gradient-hero" />
         <div className="relative z-10 text-center px-4 animate-fade-in bg-black/20 backdrop-blur-sm rounded-2xl py-10 px-8 max-w-2xl mx-auto">
           {/* Logo */}
-          <div className="mb-6 flex justify-center animate-pulse">
+          <div className="mb-8 flex justify-center animate-pulse">
             <img 
               src={logoIgreja} 
               alt="Logo Igreja" 
-              className="h-24 md:h-32 drop-shadow-lg"
+              className="h-24 md:h-40 lg:h-48 drop-shadow-lg transition-transform hover:scale-110"
             />
           </div>
           
