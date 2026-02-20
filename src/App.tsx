@@ -13,7 +13,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminEvents from "./pages/AdminEvents";
 import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminPayments from "./pages/AdminPayments";
+import AdminProfile from "./pages/AdminProfile";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,7 @@ const App = () => (
             <Route path="eventos" element={<AdminEvents />} />
             <Route path="inscricoes" element={<AdminRegistrations />} />
             <Route path="pagamentos" element={<AdminPayments />} />
+            <Route path="perfil" element={<AdminProfile />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

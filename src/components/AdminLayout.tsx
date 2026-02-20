@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Calendar, Users, CreditCard, LogOut } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, CreditCard, LogOut, UserCircle } from "lucide-react";
 import logo from "@/assets/logo-vale.png";
 import { Button } from "@/components/ui/button";
 
 const AdminLayout = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,6 +20,12 @@ const AdminLayout = () => {
         navigate("/admin/login");
         return;
       }
+
+      setUser(session.user);
+      if (session.user.user_metadata?.avatar_url) {
+        setAvatarUrl(session.user.user_metadata.avatar_url);
+      }
+
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
@@ -36,6 +44,12 @@ const AdminLayout = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) navigate("/admin/login");
+      if (session?.user) {
+        setUser(session.user);
+        if (session.user.user_metadata?.avatar_url) {
+          setAvatarUrl(session.user.user_metadata.avatar_url);
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -63,7 +77,25 @@ const AdminLayout = () => {
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside className="w-64 bg-secondary border-r border-border/50 flex flex-col shrink-0">
-        <div className="p-4 border-b border-border/30">
+        <div className="p-4 border-b border-border/30 space-y-3">
+          {/* Avatar e Info do Usuário */}
+          <Link to="/admin/perfil" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="w-12 h-12 rounded-lg bg-muted border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={user?.email} className="w-full h-full object-cover" />
+              ) : (
+                <UserCircle className="h-6 w-6 text-primary" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-secondary-foreground truncate">
+                {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Admin"}
+              </p>
+              <p className="text-xs text-secondary-foreground/60 truncate">{user?.email}</p>
+            </div>
+          </Link>
+
+          {/* Logo/Brand */}
           <Link to="/" className="flex items-center gap-2">
             <img src={logo} alt="Vale Church Lavras" className="h-8 w-8 rounded-full object-cover" />
             <div>
@@ -93,7 +125,13 @@ const AdminLayout = () => {
           })}
         </nav>
 
-        <div className="p-3 border-t border-border/30">
+        <div className="p-3 border-t border-border/30 space-y-2">
+          <Link to="/admin/perfil">
+            <Button variant="ghost" className="w-full justify-start text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/5">
+              <UserCircle className="mr-2 h-4 w-4" />
+              Meu Perfil
+            </Button>
+          </Link>
           <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-secondary-foreground/60 hover:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
             Sair

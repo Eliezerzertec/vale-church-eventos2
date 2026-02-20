@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, MapPin, Users, ArrowLeft, CheckCircle } from "lucide-react";
+import { abacatepay } from "@/integrations/abacatepay/client";
+import { Calendar, MapPin, Users, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,8 @@ const EventDetailPage = () => {
   const { toast } = useToast();
   const [form, setForm] = useState({ full_name: "", email: "", phone: "", cpf: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [registrationId, setRegistrationId] = useState<string | null>(null);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", id],
@@ -50,23 +53,92 @@ const EventDetailPage = () => {
   const registerMutation = useMutation({
     mutationFn: async () => {
       const { data: session } = await supabase.auth.getSession();
-      const { error } = await supabase.from("event_registrations").insert({
-        event_id: id!,
-        user_id: session?.session?.user?.id || null,
-        full_name: form.full_name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim() || null,
-        cpf: form.cpf.trim() || null,
-        status: event?.is_free ? "confirmed" : "pending",
-      });
-      if (error) throw error;
+      
+      // 1. Criar inscrição
+      const { data: regData, error: regError } = await supabase
+        .from("event_registrations")
+        .insert({
+          event_id: id!,
+          user_id: session?.session?.user?.id || null,
+          full_name: form.full_name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || null,
+          cpf: form.cpf.trim() || null,
+          status: event?.is_free ? "confirmed" : "pending", // pending = aguardando pagamento
+        })
+        .select("id")
+        .single();
+
+      if (regError) throw regError;
+
+      setRegistrationId(regData.id);
+
+      // 2. Se evento for pago, criar cobrança
+      if (!event?.is_free) {
+        const amountInReais = Number(event?.price || 0);
+        const amountInCents = Math.round(amountInReais * 100);
+
+        const { data: billing, error: billingError } = await abacatepay.billing.create({
+          amount: amountInCents,
+          description: `Inscrição - ${event?.title}`,
+          methods: ["PIX", "CARD"],
+          customer: {
+            id: form.email,
+            metadata: {
+              email: form.email,
+              name: form.full_name,
+              registration_id: regData.id,
+              event_id: id,
+            },
+          },
+        });
+
+        if (billingError) {
+          // Cancelar inscrição se falhar criar cobrança
+          await supabase
+            .from("event_registrations")
+            .update({ status: "cancelled" })
+            .eq("id", regData.id);
+          throw new Error(billingError);
+        }
+
+        // 3. Salvar pagamento no banco
+        const { error: paymentError } = await supabase.from("payments").insert({
+          registration_id: regData.id,
+          event_id: id!,
+          amount: amountInReais,
+          status: "pending",
+          billing_id: billing.id,
+          registration_email: form.email,
+          registration_name: form.full_name,
+          payment_url: billing.url,
+        });
+
+        if (paymentError) throw paymentError;
+
+        setPaymentUrl(billing.url);
+      }
     },
     onSuccess: () => {
       setSubmitted(true);
-      toast({ title: "Inscrição realizada!", description: event?.is_free ? "Você está inscrito no evento." : "Aguardando confirmação do pagamento." });
+      if (event?.is_free) {
+        toast({
+          title: "Inscrição Confirmada!",
+          description: "Você está inscrito no evento.",
+        });
+      } else {
+        toast({
+          title: "Inscrição Realizada",
+          description: "Link de pagamento foi gerado. Complete o pagamento para confirmar.",
+        });
+      }
     },
     onError: (err: any) => {
-      toast({ title: "Erro", description: err.message || "Erro ao realizar inscrição.", variant: "destructive" });
+      toast({
+        title: "Erro",
+        description: err.message || "Erro ao realizar inscrição.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -162,13 +234,43 @@ const EventDetailPage = () => {
               <div className="bg-card rounded-xl p-6 shadow-card border border-border/50 sticky top-24">
                 {submitted ? (
                   <div className="text-center py-8">
-                    <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                    <h3 className="font-display text-xl font-bold text-foreground mb-2">Inscrição Confirmada!</h3>
-                    <p className="text-muted-foreground text-sm">
-                      {event.is_free
-                        ? "Você está inscrito. Nos vemos no evento!"
-                        : "Sua inscrição foi recebida. Realize o pagamento para confirmar."}
-                    </p>
+                    {event?.is_free ? (
+                      <>
+                        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                        <h3 className="font-display text-xl font-bold text-foreground mb-2">
+                          Inscrição Confirmada!
+                        </h3>
+                        <p className="text-muted-foreground text-sm">
+                          Você está inscrito. Nos vemos no evento!
+                        </p>
+                      </>
+                    ) : paymentUrl ? (
+                      <>
+                        <AlertCircle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+                        <h3 className="font-display text-xl font-bold text-foreground mb-4">
+                          Complete seu Pagamento
+                        </h3>
+                        <p className="text-muted-foreground text-sm mb-6">
+                          Clique no botão abaixo para pagar sua inscrição via PIX ou Cartão de Crédito.
+                        </p>
+                        <div className="space-y-3">
+                          <a
+                            href={paymentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block w-full gradient-gold text-secondary font-semibold px-4 py-3 rounded-lg shadow-gold hover:opacity-90 transition-opacity"
+                          >
+                            Finalizar Pagamento
+                          </a>
+                          <p className="text-xs text-muted-foreground">
+                            Você será redirecionado para o AbacatePay
+                          </p>
+                          <p className="text-sm text-foreground font-medium mt-4">
+                            R$ {Number(event?.price || 0).toFixed(2)}
+                          </p>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 ) : (
                   <>
