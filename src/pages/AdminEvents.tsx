@@ -7,8 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Pencil, Trash2, Upload, X, Image } from "lucide-react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +43,9 @@ const AdminEvents = () => {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: events, isLoading } = useQuery({
     queryKey: ["admin-events"],
@@ -97,6 +100,24 @@ const AdminEvents = () => {
     },
   });
 
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const { error } = await supabase.storage.from('event-images').upload(fileName, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('event-images').getPublicUrl(fileName);
+      setForm(prev => ({ ...prev, image_url: publicUrl }));
+      setPreviewUrl(publicUrl);
+      toast({ title: "Imagem enviada com sucesso!" });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar imagem", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const openEdit = (event: any) => {
     setEditId(event.id);
     setForm({
@@ -110,6 +131,7 @@ const AdminEvents = () => {
       image_url: event.image_url || "",
       is_active: event.is_active,
     });
+    setPreviewUrl(event.image_url || null);
     setOpen(true);
   };
 
@@ -117,7 +139,7 @@ const AdminEvents = () => {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-bold text-foreground">Eventos</h1>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setPreviewUrl(null); } }}>
           <DialogTrigger asChild>
             <Button className="gradient-gold text-secondary font-semibold">
               <Plus className="mr-2 h-4 w-4" /> Novo Evento
@@ -159,8 +181,49 @@ const AdminEvents = () => {
                 <Input type="number" min="1" value={form.max_capacity} onChange={(e) => setForm({ ...form, max_capacity: e.target.value })} placeholder="Sem limite" />
               </div>
               <div>
-                <Label>URL da Imagem</Label>
-                <Input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." />
+                <Label>Imagem do Evento</Label>
+                {(previewUrl || form.image_url) && (
+                  <div className="relative mb-2 w-full h-32 rounded-lg overflow-hidden border border-border">
+                    <img src={previewUrl || form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="absolute top-1 right-1 h-6 w-6 p-0"
+                      onClick={() => { setPreviewUrl(null); setForm({ ...form, image_url: "" }); }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(file);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploading ? "Enviando..." : "Enviar Imagem"}
+                  </Button>
+                </div>
+                <Input
+                  value={form.image_url}
+                  onChange={(e) => { setForm({ ...form, image_url: e.target.value }); setPreviewUrl(e.target.value || null); }}
+                  placeholder="Ou cole a URL da imagem..."
+                  className="mt-2"
+                />
               </div>
               <div className="flex items-center gap-3">
                 <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
