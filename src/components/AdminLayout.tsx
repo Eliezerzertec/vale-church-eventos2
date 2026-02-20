@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Calendar, Users, CreditCard, LogOut, UserCircle } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, CreditCard, FileText, LogOut, UserCircle } from "lucide-react";
 import logo from "@/assets/logo-vale.png";
 import { Button } from "@/components/ui/button";
 
@@ -71,6 +71,7 @@ const AdminLayout = () => {
     { href: "/admin/eventos", label: "Eventos", icon: Calendar },
     { href: "/admin/inscricoes", label: "Inscrições", icon: Users },
     { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
+    { href: "/admin/relatorios", label: "Relatórios", icon: FileText },
   ];
 
   return (
