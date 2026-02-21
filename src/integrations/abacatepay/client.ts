@@ -3,6 +3,8 @@
 
 const API_BASE = "https://api.abacatepay.com";
 const API_VERSION = "v1";
+// Proxy via Supabase para evitar CORS issues
+const PROXY_URL = import.meta.env.VITE_SUPABASE_URL + "/functions/v1/abacatepay-proxy";
 
 export interface CreateBillingParams {
   amount: number; // em centavos (ex: 1000 = R$ 10,00)
@@ -60,22 +62,27 @@ class AbacatePay {
       
       console.log("📤 AbacatePay Request:", {
         method,
-        url,
+        endpoint,
         body,
-        auth: `Bearer ${this.apiKey.substring(0, 10)}...`,
       });
 
-      const response = await fetch(url, {
+      // Usar proxy via Supabase para evitar CORS
+      const proxyBody = {
         method,
+        endpoint,
+        body,
+        apiKey: this.apiKey,
+      };
+
+      const response = await fetch(PROXY_URL, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Tentar com X-API-Key (mais comum que Bearer para APIs de pagamento)
-          "X-API-Key": this.apiKey,
         },
-        body: body ? JSON.stringify(body) : undefined,
+        body: JSON.stringify(proxyBody),
       });
 
-      const responseData = await response.json().catch(() => ({}));
+      const responseData = await response.json();
 
       console.log("📥 AbacatePay Response:", {
         status: response.status,
@@ -84,7 +91,7 @@ class AbacatePay {
       });
 
       if (!response.ok) {
-        const errorMessage = responseData?.error?.message || responseData?.message || `HTTP ${response.status}`;
+        const errorMessage = responseData?.error?.message || responseData?.error || responseData?.message || `HTTP ${response.status}`;
         console.error("❌ AbacatePay Error:", errorMessage);
         return {
           data: null,
@@ -97,10 +104,14 @@ class AbacatePay {
         error: null,
       };
     } catch (error: any) {
-      console.error("❌ AbacatePay Exception:", error);
+      console.error("❌ AbacatePay Exception:", {
+        message: error.message,
+        name: error.name,
+      });
+
       return {
         data: null,
-        error: error.message || "Erro desconhecido na requisição",
+        error: `Erro na requisição: ${error.message}`,
       };
     }
   }
