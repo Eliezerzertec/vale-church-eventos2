@@ -58,29 +58,46 @@ class AbacatePay {
     try {
       const url = `${API_BASE}/${API_VERSION}${endpoint}`;
       
+      console.log("📤 AbacatePay Request:", {
+        method,
+        url,
+        body,
+        auth: `Bearer ${this.apiKey.substring(0, 10)}...`,
+      });
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`,
+          // Tentar com X-API-Key (mais comum que Bearer para APIs de pagamento)
+          "X-API-Key": this.apiKey,
         },
         body: body ? JSON.stringify(body) : undefined,
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
+      console.log("📥 AbacatePay Response:", {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseData,
+      });
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorMessage = responseData?.error?.message || responseData?.message || `HTTP ${response.status}`;
+        console.error("❌ AbacatePay Error:", errorMessage);
         return {
           data: null,
-          error: errorData?.error?.message || `HTTP ${response.status}`,
+          error: errorMessage,
         };
       }
 
-      const data = await response.json();
       return {
-        data: data as T,
+        data: responseData as T,
         error: null,
       };
     } catch (error: any) {
+      console.error("❌ AbacatePay Exception:", error);
       return {
         data: null,
         error: error.message || "Erro desconhecido na requisição",
@@ -90,15 +107,28 @@ class AbacatePay {
 
   billing = {
     create: async (params: CreateBillingParams): Promise<AbacatePayResponse<BillingResponse>> => {
-      return this.request<BillingResponse>("POST", "/billing/create", {
+      const payload: any = {
         amount: params.amount,
         description: params.description,
         methods: params.methods || ["PIX", "CARD"],
-        customer: params.customer,
-        frequency: params.frequency || "ONE_TIME",
-        nextBilling: params.nextBilling,
-        devMode: this.isDev,
-      });
+      };
+
+      // Apenas adicionar customer se exisitir
+      if (params.customer) {
+        payload.customer = params.customer;
+      }
+
+      // Apenas adicionar frequency se não for padrão
+      if (params.frequency && params.frequency !== "ONE_TIME") {
+        payload.frequency = params.frequency;
+      }
+
+      // Apenas adicionar nextBilling se existir
+      if (params.nextBilling) {
+        payload.nextBilling = params.nextBilling;
+      }
+
+      return this.request<BillingResponse>("POST", "/billing/create", payload);
     },
 
     get: async (billingId: string): Promise<AbacatePayResponse<BillingResponse>> => {
