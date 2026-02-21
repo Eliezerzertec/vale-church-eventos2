@@ -4,6 +4,9 @@
 -- Data: 20/02/2026
 -- ========================================
 
+-- Passo 0: Evitar duplicatas - Adicionar UNIQUE constraint
+ALTER TABLE event_registrations ADD CONSTRAINT unique_email_per_event UNIQUE(email, event_id) ON CONFLICT DO NOTHING;
+
 -- Passo 1: Habilitar RLS na tabela event_registrations
 ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
 
@@ -76,7 +79,7 @@ USING (true);
 
 ALTER TABLE IF EXISTS user_roles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Permitir leitura de roles" ON user_roles
+CREATE POLICY "Permitir leitura de roles" ON user_roles
 FOR SELECT
 USING (true);
 

@@ -21,6 +21,7 @@ const EventDetailPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", id],
@@ -134,11 +135,22 @@ const EventDetailPage = () => {
       }
     },
     onError: (err: any) => {
-      toast({
-        title: "Erro",
-        description: err.message || "Erro ao realizar inscrição.",
-        variant: "destructive",
-      });
+      const errorMessage = err.message || "Erro ao realizar inscrição.";
+      
+      // Verificar se é erro de duplicata (UNIQUE constraint)
+      if (errorMessage.includes("unique") || errorMessage.includes("duplicate") || err.code === "23505") {
+        toast({
+          title: "Você já está inscrito",
+          description: "Este email já possui uma inscrição neste evento.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -148,7 +160,37 @@ const EventDetailPage = () => {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
       return;
     }
-    registerMutation.mutate();
+
+    // Evitar double-submit
+    if (isChecking || registerMutation.isPending) return;
+
+    // Verificar duplicata antes de inserir
+    setIsChecking(true);
+    supabase
+      .from("event_registrations")
+      .select("id")
+      .eq("event_id", id!)
+      .eq("email", form.email.trim())
+      .neq("status", "cancelled")
+      .single()
+      .then(({ data }) => {
+        setIsChecking(false);
+        if (data) {
+          toast({
+            title: "Você já está inscrito",
+            description: "Este email já possui uma inscrição neste evento.",
+            variant: "destructive",
+          });
+          return;
+        }
+        // Se não encontrou duplicata, prosseguir com inscrição
+        registerMutation.mutate();
+      })
+      .catch(() => {
+        setIsChecking(false);
+        // Se erro na busca (ex: nenhum registro), prosseguir
+        registerMutation.mutate();
+      });
   };
 
   const spotsLeft = event?.max_capacity ? event.max_capacity - (registrationCount || 0) : null;
@@ -295,8 +337,8 @@ const EventDetailPage = () => {
                           <Label htmlFor="cpf">CPF</Label>
                           <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} />
                         </div>
-                        <Button type="submit" className="w-full gradient-gold text-secondary font-semibold shadow-gold" disabled={registerMutation.isPending}>
-                          {registerMutation.isPending ? "Processando..." : event.is_free ? "Confirmar Inscrição" : "Inscrever-se e Pagar"}
+                        <Button type="submit" className="w-full gradient-gold text-secondary font-semibold shadow-gold" disabled={registerMutation.isPending || isChecking}>
+                          {registerMutation.isPending ? "Processando..." : isChecking ? "Verificando..." : event.is_free ? "Confirmar Inscrição" : "Inscrever-se e Pagar"}
                         </Button>
                       </form>
                     )}
