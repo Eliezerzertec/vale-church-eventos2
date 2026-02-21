@@ -3,8 +3,53 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const resendApiKey = Deno.env.get("RESEND_API_KEY") || "";
+const resendFrom = Deno.env.get("RESEND_FROM") || "no-reply@igreja.local";
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+const sendConfirmationEmail = async (
+  to: string | null,
+  name: string | null,
+  eventTitle: string | null
+) => {
+  if (!to) return;
+  if (!resendApiKey) {
+    console.warn("RESEND_API_KEY não configurada; email não enviado");
+    return;
+  }
+
+  const subject = eventTitle
+    ? `Pagamento confirmado: ${eventTitle}`
+    : "Pagamento confirmado";
+
+  const safeName = name || "";
+  const html = `
+    <p>Olá ${safeName || ""},</p>
+    <p>Recebemos a confirmação do seu pagamento.</p>
+    ${eventTitle ? `<p>Evento: <strong>${eventTitle}</strong></p>` : ""}
+    <p>Sua inscrição está confirmada. Nos vemos lá!</p>
+  `;
+
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: resendFrom,
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    console.error("Erro ao enviar email de confirmação:", text);
+  }
+};
 
 serve(async (req) => {
   // Validar método HTTP
@@ -94,9 +139,22 @@ serve(async (req) => {
         `Inscrição ${payment.registration_id} confirmada após pagamento`
       );
 
-      // TODO: Enviar email de confirmação para o usuário
-      // const emailService = new EmailService();
-      // await emailService.sendConfirmationEmail(payment.registration_email);
+      // Enviar email de confirmação (best effort)
+      let eventTitle: string | null = null;
+      if (payment.event_id) {
+        const { data: eventData } = await supabase
+          .from("events")
+          .select("title")
+          .eq("id", payment.event_id)
+          .maybeSingle();
+        eventTitle = eventData?.title || null;
+      }
+
+      await sendConfirmationEmail(
+        payment.registration_email || null,
+        payment.registration_name || null,
+        eventTitle
+      );
     }
 
     // Se pagamento falhou, cancelar inscrição

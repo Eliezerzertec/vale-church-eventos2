@@ -38,6 +38,19 @@ const emptyForm: EventForm = {
 };
 
 const AdminEvents = () => {
+  const safeUUID = () => {
+    try {
+      // Usa crypto.randomUUID quando disponível (navegadores modernos)
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+    } catch (err) {
+      console.warn("randomUUID indisponível, usando fallback", err);
+    }
+    // Fallback simples
+    return `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  };
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -101,17 +114,35 @@ const AdminEvents = () => {
   });
 
   const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Erro", description: "Selecione um arquivo de imagem", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Erro", description: "Imagem deve ter no máximo 5MB", variant: "destructive" });
+      return;
+    }
+
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const { error } = await supabase.storage.from('event-images').upload(fileName, file);
+      const fileName = `event-${safeUUID()}.${fileExt}`;
+      const { error } = await supabase.storage
+        .from('event-images')
+        .upload(fileName, file, {
+          upsert: true,
+          cacheControl: '3600',
+          contentType: file.type,
+        });
       if (error) throw error;
+
       const { data: { publicUrl } } = supabase.storage.from('event-images').getPublicUrl(fileName);
       setForm(prev => ({ ...prev, image_url: publicUrl }));
       setPreviewUrl(publicUrl);
       toast({ title: "Imagem enviada com sucesso!" });
     } catch (err: any) {
+      console.error("Upload de imagem falhou", err);
       toast({ title: "Erro ao enviar imagem", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);

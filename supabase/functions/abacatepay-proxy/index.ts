@@ -3,13 +3,26 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
+  // Incluir todos os headers que o client envia (maiusc/minusc para evitar rejeição)
+  "Access-Control-Allow-Headers": [
+    "Content-Type",
+    "Authorization",
+    "authorization",
+    "apikey",
+    "ApiKey",
+    "X-API-Key",
+    "x-api-key",
+    "X-Client-Info",
+    "Prefer",
+  ].join(", "),
+  "Access-Control-Max-Age": "86400",
 };
 
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    // Preflight precisa status 200 e headers; não parseia body
+    return new Response("ok", { status: 200, headers: corsHeaders });
   }
 
   try {

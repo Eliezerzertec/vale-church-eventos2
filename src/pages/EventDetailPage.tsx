@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { abacatepay } from "@/integrations/abacatepay/client";
@@ -10,20 +10,45 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+
+// Resolve possíveis campos de link de checkout retornados pela AbacatePay
+const resolveCheckoutUrl = (billing: any): string | null => {
+  if (!billing) return null;
+
+  const candidates = [
+    billing.url,
+    billing.paymentUrl,
+    billing.checkoutUrl,
+    billing.paymentLink,
+    billing.payment_link,
+    billing.redirectUrl,
+    billing.redirect_url,
+    billing?.checkout?.url,
+    billing?.data?.url,
+    billing?.data?.paymentUrl,
+    billing?.data?.checkoutUrl,
+  ].filter((v) => typeof v === "string" && v.length > 0);
+
+  return candidates.length > 0 ? candidates[0] : null;
+};
 
 const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [form, setForm] = useState({ full_name: "", email: "", phone: "", cpf: "" });
   const [submitted, setSubmitted] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
-  const [pixCode, setPixCode] = useState<string | null>(null);
-  const [pixQrBase64, setPixQrBase64] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [paymentReturnStatus, setPaymentReturnStatus] = useState<string | null>(null);
+  const [paymentReturnInfo, setPaymentReturnInfo] = useState<{ registrationId?: string; paymentUrl?: string } | null>(null);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+
+  const isPaymentReturn = searchParams.get("pagamento") === "ok";
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", id],
@@ -53,6 +78,49 @@ const EventDetailPage = () => {
     enabled: !!id,
   });
 
+  // Quando a AbacatePay redireciona de volta com ?pagamento=ok, confirmamos status
+  useEffect(() => {
+    if (!isPaymentReturn) return;
+
+    const raw = typeof window !== "undefined" ? localStorage.getItem("abacatepay:lastPayment") : null;
+    if (!raw) {
+      setPaymentReturnStatus("pending");
+      return;
+    }
+
+    try {
+      const stored = JSON.parse(raw);
+      if (!stored?.registrationId || stored?.eventId !== id) return;
+
+      setIsCheckingPayment(true);
+      supabase
+        .from("payments")
+        .select("status,payment_url,registration_id,billing_id")
+        .eq("registration_id", stored.registrationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          setPaymentReturnStatus(data?.status || "pending");
+          setPaymentReturnInfo({
+            registrationId: stored.registrationId,
+            paymentUrl: data?.payment_url || stored.paymentUrl,
+          });
+        })
+        .catch(() => {
+          setPaymentReturnStatus("pending");
+          setPaymentReturnInfo({
+            registrationId: stored.registrationId,
+            paymentUrl: stored.paymentUrl,
+          });
+        })
+        .finally(() => setIsCheckingPayment(false));
+    } catch (err) {
+      console.error("Falha ao ler retorno de pagamento", err);
+      setPaymentReturnStatus("pending");
+    }
+  }, [id, isPaymentReturn]);
+
   const registerMutation = useMutation({
     mutationFn: async () => {
       const { data: session } = await supabase.auth.getSession();
@@ -76,46 +144,50 @@ const EventDetailPage = () => {
 
       setRegistrationId(regData.id);
 
-      // 2. Se evento for pago, criar cobrança PIX QRCode
+      // 2. Se evento for pago, criar cobrança (PIX + CARTÃO) via /billing/create
       if (!event?.is_free) {
         const amountInReais = Number(event?.price || 0);
         const amountInCents = Math.round(amountInReais * 100);
 
-        // Enviar customer apenas se todos os campos obrigatórios existirem
-        const hasCustomer = !!(form.full_name && form.email && form.phone && form.cpf);
-
-        const { data: pix, error: pixError } = await abacatepay.pixQrCode.create({
-          amount: amountInCents,
-          description: `Inscrição - ${event?.title}`,
-          expiresIn: 1800, // 30 minutos
-          customer: hasCustomer
-            ? {
-                name: form.full_name,
-                cellphone: form.phone,
-                email: form.email,
-                taxId: form.cpf,
-              }
-            : undefined,
-          metadata: {
-            registration_id: regData.id,
-            event_id: id,
-            email: form.email,
+        const { data: billing, error: billingError } = await abacatepay.billing.create({
+          frequency: "ONE_TIME",
+          methods: ["PIX", "CARD"],
+          products: [
+            {
+              externalId: id!,
+              name: event?.title || "Inscrição",
+              description: event?.description || "Inscrição em evento",
+              quantity: 1,
+              price: amountInCents,
+            },
+          ],
+          returnUrl: `${window.location.origin}/eventos/${id}`,
+          completionUrl: `${window.location.origin}/eventos/${id}?pagamento=ok`,
+          customer: {
             name: form.full_name,
+            email: form.email,
+            cellphone: form.phone || undefined,
+            taxId: form.cpf || undefined,
+            metadata: {
+              registration_id: regData.id,
+              event_id: id,
+            },
           },
         });
 
-        if (pixError || !pix) {
+        const checkoutUrl = resolveCheckoutUrl(billing);
+
+        if (billingError || !billing || !checkoutUrl) {
           // Cancelar inscrição se falhar criar cobrança
           await supabase
             .from("event_registrations")
             .update({ status: "cancelled" })
             .eq("id", regData.id);
-          throw new Error(pixError || "Erro ao gerar PIX");
+          console.warn("AbacatePay billing sem URL", { billing, billingError });
+          throw new Error(billingError || "Erro ao criar cobrança (link não retornado)");
         }
 
-        setPixCode(pix.brCode);
-        setPixQrBase64(pix.brCodeBase64);
-        setPaymentUrl(null);
+        setPaymentUrl(checkoutUrl);
 
         // 3. Salvar pagamento no banco
         const { error: paymentError } = await supabase.from("payments").insert({
@@ -123,13 +195,42 @@ const EventDetailPage = () => {
           event_id: id!,
           amount: amountInReais,
           status: "pending",
-          billing_id: pix.id,
+          billing_id: billing.id,
           registration_email: form.email,
           registration_name: form.full_name,
-          payment_url: pix.brCode, // guardar copia-e-cola
+          payment_url: checkoutUrl,
         });
 
-        if (paymentError) throw paymentError;
+        if (paymentError) {
+          console.error("Falha ao salvar pagamento no Supabase", paymentError);
+          // Continua para o checkout mesmo se persistência falhar
+        }
+
+        // Guardar detalhes para tela de retorno pós-pagamento
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "abacatepay:lastPayment",
+            JSON.stringify({
+              registrationId: regData.id,
+              billingId: billing.id,
+              eventId: id,
+              paymentUrl: checkoutUrl,
+              email: form.email,
+              name: form.full_name,
+              ts: Date.now(),
+            })
+          );
+        }
+
+        if (checkoutUrl) {
+          // Tenta redirecionar no mesmo tab; se bloqueado, abre nova aba como fallback
+          window.location.href = checkoutUrl;
+          setTimeout(() => {
+            if (window.location.href !== checkoutUrl) {
+              window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+            }
+          }, 800);
+        }
       }
     },
     onSuccess: () => {
@@ -184,7 +285,7 @@ const EventDetailPage = () => {
       .eq("event_id", id!)
       .eq("email", form.email.trim())
       .neq("status", "cancelled")
-      .single()
+      .maybeSingle()
       .then(({ data }) => {
         setIsChecking(false);
         if (data) {
@@ -286,7 +387,49 @@ const EventDetailPage = () => {
             {/* Registration Form */}
             <div className="md:col-span-2">
               <div className="bg-card rounded-xl p-6 shadow-card border border-border/50 sticky top-24">
-                {submitted ? (
+                {!event.is_active ? (
+                  <div className="text-center py-10 space-y-3">
+                    <AlertCircle className="h-12 w-12 text-amber-500 mx-auto" />
+                    <h3 className="font-display text-xl font-bold text-foreground">Inscrições indisponíveis</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                      Este evento está inativo no momento. Assim que for reativado, as inscrições serão reabertas.
+                    </p>
+                    <Button variant="outline" onClick={() => navigate("/eventos")}>Voltar para eventos</Button>
+                  </div>
+                ) : (
+                <>
+                {isPaymentReturn && (
+                  <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    {isCheckingPayment ? (
+                      "Confirmando pagamento..."
+                    ) : paymentReturnStatus === "paid" ? (
+                      <div className="space-y-1">
+                        <div className="font-semibold">Pagamento confirmado</div>
+                        <div>Obrigado! Sua inscrição está confirmada e você receberá um email.</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="font-semibold">Estamos processando</div>
+                        <div>
+                          Recebemos seu retorno. Se ainda não constar como pago, aguarde alguns segundos ou reabra o checkout.
+                        </div>
+                      </div>
+                    )}
+                    {paymentReturnStatus !== "paid" && paymentReturnInfo?.paymentUrl && (
+                      <div className="mt-3">
+                        <a
+                          href={paymentReturnInfo.paymentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-sm font-semibold text-primary underline underline-offset-4"
+                        >
+                          Abrir checkout novamente
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+                    {submitted ? (
                   <div className="text-center py-8">
                     {event?.is_free ? (
                       <>
@@ -298,39 +441,31 @@ const EventDetailPage = () => {
                           Você está inscrito. Nos vemos no evento!
                         </p>
                       </>
-                    ) : pixQrBase64 ? (
+                    ) : paymentUrl ? (
                       <>
                         <AlertCircle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
                         <h3 className="font-display text-xl font-bold text-foreground mb-4">
-                          Pague via PIX
+                          Complete seu Pagamento
                         </h3>
-                        <p className="text-muted-foreground text-sm mb-4">
-                          Escaneie o QRCode ou copie o código PIX abaixo. Expira em 30 minutos.
+                        <p className="text-muted-foreground text-sm mb-6">
+                          Clique no botão abaixo para pagar via PIX ou Cartão na AbacatePay.
                         </p>
-                        <div className="flex justify-center mb-4">
-                          <img
-                            src={pixQrBase64}
-                            alt="QRCode PIX"
-                            className="w-56 h-56 object-contain rounded-lg border border-border/60"
-                          />
+                        <div className="space-y-3">
+                          <a
+                            href={paymentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block w-full gradient-gold text-secondary font-semibold px-4 py-3 rounded-lg shadow-gold hover:opacity-90 transition-opacity"
+                          >
+                            Pagar na AbacatePay
+                          </a>
+                          <p className="text-xs text-muted-foreground">
+                            Você será redirecionado para concluir com PIX ou Cartão.
+                          </p>
+                          <p className="text-sm text-foreground font-medium mt-4">
+                            Valor: R$ {Number(event?.price || 0).toFixed(2)}
+                          </p>
                         </div>
-                        {pixCode && (
-                          <div className="space-y-3">
-                            <div className="text-left text-sm font-mono bg-muted rounded-lg p-3 break-all border border-border/60">
-                              {pixCode}
-                            </div>
-                            <Button
-                              onClick={() => navigator.clipboard.writeText(pixCode)}
-                              className="w-full"
-                              variant="secondary"
-                            >
-                              Copiar código PIX
-                            </Button>
-                          </div>
-                        )}
-                        <p className="text-sm text-foreground font-medium mt-4">
-                          Valor: R$ {Number(event?.price || 0).toFixed(2)}
-                        </p>
                       </>
                     ) : null}
                   </div>
@@ -358,11 +493,19 @@ const EventDetailPage = () => {
                           <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} />
                         </div>
                         <Button type="submit" className="w-full gradient-gold text-secondary font-semibold shadow-gold" disabled={registerMutation.isPending || isChecking}>
-                          {registerMutation.isPending ? "Processando..." : isChecking ? "Verificando..." : event.is_free ? "Confirmar Inscrição" : "Inscrever-se e Pagar"}
+                          {registerMutation.isPending
+                            ? "Processando..."
+                            : isChecking
+                              ? "Verificando..."
+                              : event.is_free
+                                ? "Confirmar Inscrição"
+                                : "Inscrever-se e Pagar"}
                         </Button>
                       </form>
                     )}
                   </>
+                )}
+                </>
                 )}
               </div>
             </div>

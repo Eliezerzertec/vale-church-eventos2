@@ -32,6 +32,7 @@ interface Registration {
 }
 
 const AdminRegistrations = () => {
+  const [eventFilter, setEventFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
   const [deletingRegId, setDeletingRegId] = useState<string | null>(null);
@@ -47,6 +48,17 @@ const AdminRegistrations = () => {
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Registration[];
+    },
+  });
+  const { data: events } = useQuery({
+    queryKey: ["admin-events-filter"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("id,title")
+        .order("event_date", { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
   });
 
@@ -97,17 +109,18 @@ const AdminRegistrations = () => {
 
   const filtered = useMemo(() => {
     if (!registrations) return [];
-    if (!search.trim()) return registrations;
+    if (!search.trim() && eventFilter === "all") return registrations;
     const q = search.toLowerCase();
     return registrations.filter((reg) => {
       const eventTitle = (reg.events as any)?.title || "";
-      return (
+      const matchText =
         eventTitle.toLowerCase().includes(q) ||
         reg.full_name.toLowerCase().includes(q) ||
-        reg.email.toLowerCase().includes(q)
-      );
+        reg.email.toLowerCase().includes(q);
+      const matchEvent = eventFilter === "all" || reg.event_id === eventFilter;
+      return matchText && matchEvent;
     });
-  }, [registrations, search]);
+  }, [registrations, search, eventFilter]);
 
   const handleEditClick = (reg: Registration) => {
     setEditingReg(reg);
@@ -146,14 +159,30 @@ const AdminRegistrations = () => {
     <div className="p-6">
       <h1 className="font-display text-2xl font-bold text-foreground mb-6">Inscrições</h1>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por evento, nome ou e-mail..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative max-w-sm w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por evento, nome ou e-mail..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Label className="whitespace-nowrap text-sm text-muted-foreground">Filtrar por evento</Label>
+          <Select value={eventFilter} onValueChange={(v) => setEventFilter(v)}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Todos os eventos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os eventos</SelectItem>
+              {events?.map((ev: any) => (
+                <SelectItem key={ev.id} value={ev.id}>{ev.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
