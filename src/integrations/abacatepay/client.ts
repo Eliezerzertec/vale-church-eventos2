@@ -44,6 +44,35 @@ export interface AbacatePayResponse<T> {
   error: string | null;
 }
 
+// Tipos para PIX QRCode
+export interface PixCustomer {
+  name: string;
+  cellphone: string;
+  email: string;
+  taxId: string; // CPF/CNPJ
+}
+
+export interface PixQrCodeRequest {
+  amount: number; // centavos
+  expiresIn?: number; // segundos
+  description?: string; // máx 37 chars
+  customer?: PixCustomer; // se fornecer, todos os campos são obrigatórios
+  metadata?: Record<string, any>;
+}
+
+export interface PixQrCodeResponse {
+  id: string;
+  amount: number;
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED";
+  devMode: boolean;
+  brCode: string;
+  brCodeBase64: string;
+  platformFee?: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt: string;
+}
+
 class AbacatePay {
   private apiKey: string;
   private isDev: boolean;
@@ -180,6 +209,36 @@ class AbacatePay {
 
     refund: async (billingId: string): Promise<AbacatePayResponse<{ success: boolean }>> => {
       return this.request<{ success: boolean }>("POST", `/billing/${billingId}/refund`);
+    },
+  };
+
+  pixQrCode = {
+    create: async (params: PixQrCodeRequest): Promise<AbacatePayResponse<PixQrCodeResponse>> => {
+      // Descrição limitada a 37 caracteres conforme docs
+      const description = params.description ? params.description.slice(0, 37) : undefined;
+
+      // Se cliente for informado, enviar todos os campos obrigatórios
+      const customer = params.customer
+        ? {
+            name: params.customer.name,
+            cellphone: params.customer.cellphone,
+            email: params.customer.email,
+            taxId: params.customer.taxId,
+          }
+        : undefined;
+
+      const payload: any = {
+        amount: params.amount,
+        description,
+        expiresIn: params.expiresIn,
+        customer,
+        metadata: params.metadata,
+      };
+
+      // Remover campos undefined para evitar 422
+      Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
+
+      return this.request<PixQrCodeResponse>("POST", "/pixQrCode/create", payload);
     },
   };
 }

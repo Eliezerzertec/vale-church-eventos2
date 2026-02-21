@@ -20,6 +20,8 @@ const EventDetailPage = () => {
   const [form, setForm] = useState({ full_name: "", email: "", phone: "", cpf: "" });
   const [submitted, setSubmitted] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [pixCode, setPixCode] = useState<string | null>(null);
+  const [pixQrBase64, setPixQrBase64] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
@@ -74,34 +76,46 @@ const EventDetailPage = () => {
 
       setRegistrationId(regData.id);
 
-      // 2. Se evento for pago, criar cobrança
+      // 2. Se evento for pago, criar cobrança PIX QRCode
       if (!event?.is_free) {
         const amountInReais = Number(event?.price || 0);
         const amountInCents = Math.round(amountInReais * 100);
 
-        const { data: billing, error: billingError } = await abacatepay.billing.create({
+        // Enviar customer apenas se todos os campos obrigatórios existirem
+        const hasCustomer = !!(form.full_name && form.email && form.phone && form.cpf);
+
+        const { data: pix, error: pixError } = await abacatepay.pixQrCode.create({
           amount: amountInCents,
           description: `Inscrição - ${event?.title}`,
-          methods: ["PIX", "CARD"],
-          customer: {
-            id: form.email,
-            metadata: {
-              email: form.email,
-              name: form.full_name,
-              registration_id: regData.id,
-              event_id: id,
-            },
+          expiresIn: 1800, // 30 minutos
+          customer: hasCustomer
+            ? {
+                name: form.full_name,
+                cellphone: form.phone,
+                email: form.email,
+                taxId: form.cpf,
+              }
+            : undefined,
+          metadata: {
+            registration_id: regData.id,
+            event_id: id,
+            email: form.email,
+            name: form.full_name,
           },
         });
 
-        if (billingError) {
+        if (pixError || !pix) {
           // Cancelar inscrição se falhar criar cobrança
           await supabase
             .from("event_registrations")
             .update({ status: "cancelled" })
             .eq("id", regData.id);
-          throw new Error(billingError);
+          throw new Error(pixError || "Erro ao gerar PIX");
         }
+
+        setPixCode(pix.brCode);
+        setPixQrBase64(pix.brCodeBase64);
+        setPaymentUrl(null);
 
         // 3. Salvar pagamento no banco
         const { error: paymentError } = await supabase.from("payments").insert({
@@ -109,15 +123,13 @@ const EventDetailPage = () => {
           event_id: id!,
           amount: amountInReais,
           status: "pending",
-          billing_id: billing.id,
+          billing_id: pix.id,
           registration_email: form.email,
           registration_name: form.full_name,
-          payment_url: billing.url,
+          payment_url: pix.brCode, // guardar copia-e-cola
         });
 
         if (paymentError) throw paymentError;
-
-        setPaymentUrl(billing.url);
       }
     },
     onSuccess: () => {
@@ -286,31 +298,39 @@ const EventDetailPage = () => {
                           Você está inscrito. Nos vemos no evento!
                         </p>
                       </>
-                    ) : paymentUrl ? (
+                    ) : pixQrBase64 ? (
                       <>
                         <AlertCircle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
                         <h3 className="font-display text-xl font-bold text-foreground mb-4">
-                          Complete seu Pagamento
+                          Pague via PIX
                         </h3>
-                        <p className="text-muted-foreground text-sm mb-6">
-                          Clique no botão abaixo para pagar sua inscrição via PIX ou Cartão de Crédito.
+                        <p className="text-muted-foreground text-sm mb-4">
+                          Escaneie o QRCode ou copie o código PIX abaixo. Expira em 30 minutos.
                         </p>
-                        <div className="space-y-3">
-                          <a
-                            href={paymentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block w-full gradient-gold text-secondary font-semibold px-4 py-3 rounded-lg shadow-gold hover:opacity-90 transition-opacity"
-                          >
-                            Finalizar Pagamento
-                          </a>
-                          <p className="text-xs text-muted-foreground">
-                            Você será redirecionado para o AbacatePay
-                          </p>
-                          <p className="text-sm text-foreground font-medium mt-4">
-                            R$ {Number(event?.price || 0).toFixed(2)}
-                          </p>
+                        <div className="flex justify-center mb-4">
+                          <img
+                            src={pixQrBase64}
+                            alt="QRCode PIX"
+                            className="w-56 h-56 object-contain rounded-lg border border-border/60"
+                          />
                         </div>
+                        {pixCode && (
+                          <div className="space-y-3">
+                            <div className="text-left text-sm font-mono bg-muted rounded-lg p-3 break-all border border-border/60">
+                              {pixCode}
+                            </div>
+                            <Button
+                              onClick={() => navigator.clipboard.writeText(pixCode)}
+                              className="w-full"
+                              variant="secondary"
+                            >
+                              Copiar código PIX
+                            </Button>
+                          </div>
+                        )}
+                        <p className="text-sm text-foreground font-medium mt-4">
+                          Valor: R$ {Number(event?.price || 0).toFixed(2)}
+                        </p>
                       </>
                     ) : null}
                   </div>
