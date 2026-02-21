@@ -1,10 +1,9 @@
 // AbacatePay API Client - v1.0
 // Este cliente facilita integração com AbacatePay para pagamentos PIX e CARD
 
+import { supabase } from "@/integrations/supabase/client";
 const API_BASE = "https://api.abacatepay.com";
 const API_VERSION = "v1";
-// Proxy via Supabase para evitar CORS issues
-const PROXY_URL = import.meta.env.VITE_SUPABASE_URL + "/functions/v1/abacatepay-proxy";
 
 export interface CreateBillingParams {
   amount: number; // em centavos (ex: 1000 = R$ 10,00)
@@ -58,15 +57,13 @@ class AbacatePay {
     body?: any
   ): Promise<AbacatePayResponse<T>> {
     try {
-      const url = `${API_BASE}/${API_VERSION}${endpoint}`;
-      
-      console.log("📤 AbacatePay Request:", {
+      console.log("📤 AbacatePay Request (via proxy):", {
         method,
         endpoint,
         body,
       });
 
-      // Usar proxy via Supabase para evitar CORS
+      // Usar Supabase Functions (envia Authorization automaticamente)
       const proxyBody = {
         method,
         endpoint,
@@ -74,25 +71,30 @@ class AbacatePay {
         apiKey: this.apiKey,
       };
 
-      const response = await fetch(PROXY_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(proxyBody),
+      const { data: responseData, error: proxyError } = await supabase.functions.invoke("abacatepay-proxy", {
+        body: proxyBody,
       });
 
-      const responseData = await response.json();
+      const status = (proxyError as any)?.status ?? 200;
 
-      console.log("📥 AbacatePay Response:", {
-        status: response.status,
-        statusText: response.statusText,
+      console.log("📥 AbacatePay Response (proxy):", {
+        status,
         body: responseData,
+        proxyError,
       });
 
-      if (!response.ok) {
-        const errorMessage = responseData?.error?.message || responseData?.error || responseData?.message || `HTTP ${response.status}`;
+      if (proxyError) {
+        const errorMessage = proxyError.message || `HTTP ${status}`;
         console.error("❌ AbacatePay Error:", errorMessage);
+        return {
+          data: null,
+          error: errorMessage,
+        };
+      }
+
+      if ((responseData as any)?.error) {
+        const errorMessage = (responseData as any)?.error?.message || (responseData as any)?.error || `HTTP ${status}`;
+        console.error("❌ AbacatePay Error Body:", errorMessage);
         return {
           data: null,
           error: errorMessage,
