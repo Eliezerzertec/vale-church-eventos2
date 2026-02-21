@@ -40,17 +40,17 @@ const Index = () => {
             <img 
               src={logoIgreja} 
               alt="Logo Igreja" 
-              className="h-24 md:h-40 lg:h-48 drop-shadow-lg transition-transform hover:scale-110"
+              className="h-24 md:h-40 lg:h-48 w-auto object-contain drop-shadow-lg transition-transform hover:scale-110"
             />
           </div>
           
-          <p className="text-primary tracking-[0.3em] uppercase text-sm font-medium mb-4">
+          
+          <h1 className="font-display text-5xl md:text-7xl font-bold text-secondary-foreground mb-6 leading-tight">
+            
+            <span className="block text-primary">Lavras</span>
+          </h1><p className="text-primary tracking-[0.3em] uppercase text-sm font-medium mb-4">
             Somos Movidos Por Amor
           </p>
-          <h1 className="font-display text-5xl md:text-7xl font-bold text-secondary-foreground mb-6 leading-tight">
-            Vale Church
-            <span className="block text-primary">Lavras</span>
-          </h1>
           <p className="text-secondary-foreground/80 text-lg max-w-lg mx-auto mb-8 font-light">
             Uma igreja formada por autênticos discípulos de Cristo, comprometida com a implantação do Reino de Deus.
           </p>
