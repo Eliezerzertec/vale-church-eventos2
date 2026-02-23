@@ -21,6 +21,7 @@ const Navbar = () => {
   const links = [
     { href: "/", label: "Início" },
     { href: "/eventos", label: "Eventos" },
+    { href: "/audicoes", label: "Audições" },
     { href: "/sobre", label: "Sobre" },
   ];
 

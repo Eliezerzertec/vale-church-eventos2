@@ -16,6 +16,8 @@ import AdminPayments from "./pages/AdminPayments";
 import AdminProfile from "./pages/AdminProfile";
 import AdminReports from "./pages/AdminReports";
 import NotFound from "./pages/NotFound";
+import AuditionsPage from "./pages/AuditionsPage";
+import AdminAuditions from "./pages/AdminAuditions";
 
 
 const queryClient = new QueryClient();
@@ -31,6 +33,7 @@ const App = () => (
           <Route path="/eventos" element={<EventsPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
           <Route path="/sobre" element={<AboutPage />} />
+          <Route path="/audicoes" element={<AuditionsPage />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -39,6 +42,7 @@ const App = () => (
             <Route path="pagamentos" element={<AdminPayments />} />
             <Route path="perfil" element={<AdminProfile />} />
             <Route path="relatorios" element={<AdminReports />} />
+            <Route path="audicoes" element={<AdminAuditions />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -97,7 +97,7 @@ class AbacatePay {
     try {
       const url = `${API_BASE}/${API_VERSION}${endpoint}`;
 
-      console.log("📤 AbacatePay Request:", { method, url, body });
+      console.log("� AbacatePay Request:", { method, url, body });
 
       const response = await fetch(url, {
         method,

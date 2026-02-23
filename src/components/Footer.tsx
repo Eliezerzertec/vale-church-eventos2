@@ -22,6 +22,7 @@ const Footer = () => {
             <div className="flex flex-col gap-2 text-sm text-secondary-foreground/70">
               <Link to="/" className="hover:text-primary transition-colors">Início</Link>
               <Link to="/eventos" className="hover:text-primary transition-colors">Eventos</Link>
+              <Link to="/audicoes" className="hover:text-primary transition-colors">Audições</Link>
               <Link to="/sobre" className="hover:text-primary transition-colors">Sobre Nós</Link>
             </div>
           </div>
