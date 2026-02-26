@@ -1,53 +1,89 @@
-# Welcome to your Lovable project
+# 🎉 Vale Church Manager - Sistema de Eventos e Pagamentos
 
-## Project info
+Sistema de gerenciamento de eventos e pagamentos via AbacatePay (PIX). Frontend em React + Vite, Backend em Node.js Express.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Quick Start
 
-## How can I edit this code?
+### 1. Instalar dependências
+```bash
+npm install
+```
 
-There are several ways of editing your application.
+### 2. Configurar .env
+```env
+VITE_SUPABASE_URL=https://seu-project.supabase.co
+VITE_SUPABASE_ANON_KEY=seu-anon-key
+VITE_ABACATEPAY_KEY=abc_dev_... 
+ABACATEPAY_WEBHOOK_SECRET=qwe123123
+PORT=3001
+```
 
-**Use Lovable**
+### 3. Iniciar
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+**Backend:**
+```bash
+node server.js
+```
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+**Frontend (opcional):**
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 📱 Endpoints
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/health` | Status do backend |
+| POST | `/api/payment/create` | Criar cobrança |
+| GET | `/api/payment/:id` | Consultar pagamento |
+| GET | `/api/coupons/list` | Listar cupons |
+| GET | `/api/coupon/validate/:code` | Validar cupom |
+| POST | `/api/webhook/abacatepay` | Webhook do AbacatePay |
 
-**Use GitHub Codespaces**
+## 🔐 Webhook
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
+### Configurar no AbacatePay
+1. Dashboard → Configurações → Webhooks
+2. URL: `https://dominio.com/api/webhook/abacatepay`
+3. Secret: `qwe123123`
+4. Evento: `billing.paid`
+
+### Desenvolvimento (ngrok)
+```bash
+ngrok http 3001
+# Configure ngrok URL no AbacatePay
+```
+
+## 🗄️ Banco de Dados
+
+Tabelas necessárias em Supabase:
+- `events`
+- `event_registrations` 
+- `payments`
+- `webhook_processing` (idempotência)
+
+## 🔧 Stack
+
+- **Frontend**: React 19, TypeScript, Vite, Tailwind, ShadCN
+- **Backend**: Node.js, Express, Supabase SDK
+- **Pagamento**: AbacatePay API
+
+## 📦 Deploy
+
+```bash
+npm install -g vercel
+vercel
+```
+
+## 🆘 Support
+
+Verifique:
+1. Backend logs: `node server.js`
+2. Browser console
+3. Supabase Dashboard
+4. AbacatePay Dashboard
+
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?
@@ -62,12 +98,14 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+This project is ready to be deployed to Vercel, AWS, Azure, or any Node.js hosting platform.
 
-## Can I connect a custom domain to my Lovable project?
+**For Vercel:**
+```bash
+vercel --prod
+```
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+**For other platforms:**
+1. Set environment variables (see .env.example)
+2. Run `npm run build`
+3. Deploy the built files

@@ -20,6 +20,7 @@ import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import AuditionsPage from "./pages/AuditionsPage";
 import AdminAuditions from "./pages/AdminAuditions";
+import WebhookMonitor from "./pages/WebhookMonitor";
 
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/payment-confirmation/:id" element={<PaymentConfirmationPage />} />
           <Route path="/sobre" element={<AboutPage />} />
           <Route path="/audicoes" element={<AuditionsPage />} />
+          <Route path="/webhook" element={<WebhookMonitor />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
