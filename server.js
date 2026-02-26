@@ -1,383 +1,261 @@
 /**
- * Backend simples para processar pagamentos AbacatePay
- * Usa o SDK oficial: abacatepay-nodejs-sdk
- * Roda em http://localhost:3001
- * 
- * Uso:
- * npm install express cors abacatepay-nodejs-sdk dotenv
- * node server.js
+ * 🎯 Backend: Sistema de Pagamentos AbacatePay
+ * Endpoints: Criar cobrança, consultar, validar cupons, processar webhook
  */
 
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
-// Carregar variáveis do .env
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://cwzmiznlvhhnpjgxgsme.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3em1pem5sdmhobnBqZ3hnc21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTY5NzcsImV4cCI6MjA4NzA5Mjk3N30.nsXSSPW2yajdEy-iFlDmtIH-AltsNZ3n8BcNkqTJ4F4';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const ABACATEPAY_KEY = process.env.VITE_ABACATEPAY_KEY;
+const WEBHOOK_SECRET = process.env.ABACATEPAY_WEBHOOK_SECRET;
 
-// Criar cliente Supabase
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !ABACATEPAY_KEY || !WEBHOOK_SECRET) {
+  console.error('❌ Variáveis de ambiente inválidas. Verifique .env.example');
+  console.error('   Faltam:', [
+    !SUPABASE_URL && 'VITE_SUPABASE_URL',
+    !SUPABASE_ANON_KEY && 'VITE_SUPABASE_ANON_KEY',
+    !ABACATEPAY_KEY && 'VITE_ABACATEPAY_KEY',
+    !WEBHOOK_SECRET && 'ABACATEPAY_WEBHOOK_SECRET'
+  ].filter(Boolean).join(', '));
+  process.exit(1);
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const isProd = ABACATEPAY_KEY.startsWith('abc_prod');
 
-// SDK não está funcionando, vamos usar fetch direto (já funciona perfeitamente)
-console.log('✅ Backend de pagamentos initializado');
-console.log('🔑 Chave API:', process.env.VITE_ABACATEPAY_KEY?.substring(0, 15) + '...');
-console.log('📌 Modo:', process.env.VITE_ABACATEPAY_KEY?.startsWith('abc_prod') ? '🔴 PRODUÇÃO' : '🟢 DESENVOLVIMENTO');
-
-// Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf, encoding) => {
+    req.rawBody = buf.toString(encoding);
+  }
+}));
 
-// Health check
 app.get('/health', (req, res) => {
-  const apiKey = process.env.VITE_ABACATEPAY_KEY || 'não configurada';
-  res.json({ 
-    status: 'ok', 
-    message: 'Backend de pagamentos ativo',
-    apiKey: apiKey.substring(0, 15) + '...',
-    mode: apiKey.startsWith('abc_prod') ? '🔴 PRODUÇÃO' : '🟢 DESENVOLVIMENTO',
+  res.json({
+    status: 'ok',
+    mode: isProd ? '🔴 PRODUÇÃO' : '🟢 DESENVOLVIMENTO',
+    timestamp: new Date().toISOString()
   });
 });
 
-/**
- * POST /api/payment/create
- * Body: { method, endpoint, body }
- * Cria cobrança via Fetch direto (sem CORS bloqueado)
- */
-app.post('/api/payment/create', async (req, res) => {
-  const { method = 'POST', endpoint = '/billing/create', body } = req.body;
 
-  if (!body) {
-    return res.status(400).json({ error: 'Body obrigatório' });
+app.post('/api/payment/create', async (req, res) => {
+  const { method = 'POST', endpoint = '/billing/create', body: paymentBody } = req.body;
+
+  if (!paymentBody) {
+    return res.status(400).json({ error: 'Body obrigatório', data: null });
   }
 
   try {
     const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
-    const ABACATEPAY_KEY = process.env.VITE_ABACATEPAY_KEY;
-
-    console.log(`📤 Criando cobrança...`);
-    console.log('🔑 Chave:', ABACATEPAY_KEY?.substring(0, 15) + '...');
-    console.log('Dados:', JSON.stringify(body, null, 2).substring(0, 200) + '...');
-
-    const url = `${ABACATEPAY_API}${endpoint}`;
-    const response = await fetch(url, {
+    const response = await fetch(`${ABACATEPAY_API}${endpoint}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${ABACATEPAY_KEY}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(paymentBody),
     });
 
     const responseData = await response.json();
 
-    console.log(`📥 Resposta [${response.status}]:`, {
-      billingId: responseData?.data?.id || responseData?.id,
-      status: responseData?.data?.status || responseData?.status,
-      devMode: responseData?.data?.devMode || responseData?.devMode,
-      url: responseData?.data?.url || responseData?.url || responseData?.payment_link,
-    });
-
     if (!response.ok) {
-      const errorMsg = responseData?.error?.message || responseData?.error || responseData?.message || `HTTP ${response.status}`;
-      console.error('❌ AbacatePay Error:', errorMsg);
+      const errorMsg = responseData?.error?.message || `HTTP ${response.status}`;
       return res.status(response.status).json({ error: errorMsg, data: null });
     }
 
-    // Normalizar resposta
     const billingData = responseData?.data || responseData;
     const receiptUrl = billingData?.id ? `https://app.abacatepay.com/receipt/${billingData.id}` : null;
-    
-    console.log(`✅ Cobrança criada com sucesso!`);
-    
-    res.status(200).json({
-      error: null,
-      data: {
-        ...billingData,
-        receipt_url: receiptUrl,
-      },
-    });
+
+    // Auto-salvar payment
+    const registrationId = paymentBody?.registrationId || paymentBody?.customer?.metadata?.registration_id;
+    if (billingData?.id && registrationId) {
+      await supabase.from('payments').insert({
+        registration_id: registrationId,
+        billing_id: billingData.id,
+        amount: paymentBody?.amount || 0,
+        status: 'pending',
+        payment_method: 'abacatepay_pix',
+      }).catch(() => null);
+    }
+
+    res.json({ error: null, data: { ...billingData, receipt_url: receiptUrl } });
   } catch (error) {
-    console.error('❌ Backend Error:', error.message);
     res.status(500).json({ error: error.message, data: null });
   }
 });
 
-/**
- * GET /api/coupons/list
- * Lista todos os cupons disponíveis
- */
+app.get('/api/payment/:id', async (req, res) => {
+  try {
+    const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
+    const response = await fetch(`${ABACATEPAY_API}/billing/${req.params.id}`, {
+      headers: { 'Authorization': `Bearer ${ABACATEPAY_KEY}` },
+    });
+    const responseData = await response.json();
+    res.json({
+      error: !response.ok ? responseData?.error : null,
+      data: response.ok ? (responseData?.data || responseData) : null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, data: null });
+  }
+});
+
 app.get('/api/coupons/list', async (req, res) => {
   try {
-    console.log(`📤 [GET] ${ABACATEPAY_API}/coupon/list`);
-
+    const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
     const response = await fetch(`${ABACATEPAY_API}/coupon/list`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${ABACATEPAY_KEY}`,
-      },
+      headers: { 'Authorization': `Bearer ${ABACATEPAY_KEY}` },
     });
-
     const responseData = await response.json();
-
-    console.log(`📥 [${response.status}] Coupons list:`, responseData?.data?.length || 0);
-
-    if (!response.ok) {
-      const errorMsg = responseData?.error?.message || responseData?.error || `HTTP ${response.status}`;
-      console.error('❌ Error listing coupons:', errorMsg);
-      return res.status(response.status).json({ error: errorMsg, data: [] });
-    }
-
-    res.status(200).json({ error: null, data: responseData?.data || [] });
+    res.json({
+      error: !response.ok ? responseData?.error : null,
+      data: response.ok ? (responseData?.data || []) : []
+    });
   } catch (error) {
-    console.error('❌ Backend Error:', error.message);
     res.status(500).json({ error: error.message, data: [] });
   }
 });
 
-/**
- * GET /api/coupon/validate/:code
- * Valida e retorna detalhes de um cupom
- */
 app.get('/api/coupon/validate/:code', async (req, res) => {
   const { code } = req.params;
-
-  if (!code) {
-    return res.status(400).json({ error: 'Cupom obrigatório', data: null });
-  }
-
   try {
-    console.log(`📤 [GET] Validando cupom: ${code}`);
-
+    const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
     const response = await fetch(`${ABACATEPAY_API}/coupon/list`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${ABACATEPAY_KEY}`,
-      },
+      headers: { 'Authorization': `Bearer ${ABACATEPAY_KEY}` },
     });
-
     const responseData = await response.json();
+    const coupon = response.ok && responseData?.data
+      ? responseData?.data.find((c) => c.id.toUpperCase() === code.toUpperCase())
+      : null;
 
-    // Procurar o cupom na lista
-    const coupon = responseData?.data?.find((c) => c.id.toUpperCase() === code.toUpperCase());
-
-    if (!coupon) {
-      console.warn(`⚠️ Cupom não encontrado: ${code}`);
+    if (!coupon || coupon.status !== 'ACTIVE') {
       return res.status(404).json({ error: 'Cupom inválido ou expirado', data: null });
     }
 
-    if (coupon.status !== 'ACTIVE') {
-      console.warn(`⚠️ Cupom inativo: ${code} (status: ${coupon.status})`);
-      return res.status(400).json({ error: 'Cupom inativo', data: null });
-    }
-
-    console.log(`✅ Cupom validado: ${code}`, { 
-      discountKind: coupon.discountKind, 
-      discount: coupon.discount,
-      redeemsCount: coupon.redeemsCount,
-      maxRedeems: coupon.maxRedeems,
-    });
-
-    res.status(200).json({ 
-      error: null, 
+    res.json({
+      error: null,
       data: {
         id: coupon.id,
-        discountKind: coupon.discountKind,  // 'PERCENTAGE' ou 'FIXED'
-        discount: coupon.discount,           // valor em % ou centavos
+        discountKind: coupon.discountKind,
+        discount: coupon.discount,
         status: coupon.status,
         maxRedeems: coupon.maxRedeems,
         redeemsCount: coupon.redeemsCount,
-        notes: coupon.notes,
       }
     });
   } catch (error) {
-    console.error('❌ Backend Error:', error.message);
     res.status(500).json({ error: error.message, data: null });
   }
 });
 
-/**
- * GET /api/payment/:billingId
- * Consulta status de um pagamento
- */
-app.get('/api/payment/:billingId', async (req, res) => {
-  const { billingId } = req.params;
 
+function verifyWebhookSignature(rawBody, signatureFromHeader, secret) {
   try {
-    console.log(`📤 [GET] ${ABACATEPAY_API}/billing/${billingId}`);
-
-    const response = await fetch(`${ABACATEPAY_API}/billing/${billingId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ABACATEPAY_KEY}`,
-      },
-    });
-
-    const responseData = await response.json();
-
-    console.log(`📥 [${response.status}]`, responseData);
-
-    if (!response.ok) {
-      const errorMsg = responseData?.error?.message || responseData?.error || `HTTP ${response.status}`;
-      return res.status(response.status).json({ error: errorMsg, data: null });
-    }
-
-    res.status(200).json({ error: null, data: responseData });
-  } catch (error) {
-    console.error('❌ Backend Error:', error.message);
-    res.status(500).json({ error: error.message, data: null });
+    if (!signatureFromHeader) return true;
+    const hash = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(signatureFromHeader));
+  } catch {
+    return false;
   }
-});
+}
 
-/**
- * GET /api/webhook/logs
- * Monitora webhooks recebidos (últimos 50)
- */
-app.get('/api/webhook/logs', async (req, res) => {
-  try {
-    console.log(`📤 [GET] Consultando webhook logs`);
-
-    const { data, error } = await supabase
-      .from('webhook_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('❌ Erro ao buscar logs:', error);
-      return res.status(400).json({ error: error.message, data: [] });
-    }
-
-    console.log(`✅ ${data?.length || 0} webhook logs encontrados`);
-
-    res.status(200).json({
-      error: null,
-      data: data || [],
-      total: data?.length || 0,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('❌ Backend Error:', error.message);
-    res.status(500).json({ error: error.message, data: [] });
-  }
-});
-
-/**
- * POST /api/webhook/abacatepay
- * Processa webhooks de pagamento (substitui a função Supabase enquanto não é deployada)
- */
 app.post('/api/webhook/abacatepay', async (req, res) => {
-  const webhookSecret = process.env.ABACATEPAY_WEBHOOK_SECRET || 'qwe123123';
-  const secretFromHeader = req.headers['x-webhook-secret'] || 
-                          req.headers['authorization']?.replace('Bearer ', '');
-
-  console.log('\n📨 [WEBHOOK] Requisição recebida');
-  console.log('  Hora:', new Date().toLocaleString('pt-BR'));
-  
-  // ✅ Validar secret
-  if (secretFromHeader !== webhookSecret) {
-    console.error('❌ Secret inválido:', secretFromHeader?.slice(0, 10));
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  const rawBody = req.rawBody || '';
 
   try {
-    const body = req.body;
-    const { event, data, devMode } = body;
-
-    console.log(`✅ Secret validado`);
-    console.log(`📌 Evento: ${event}`);
-    console.log(`🔧 Mode: ${devMode ? '🟢 DEV' : '🔴 PROD'}`);
-
-    if (!data?.billing?.id) {
-      console.error('❌ Billing ID não encontrado');
-      return res.status(400).json({ error: 'Invalid payload' });
+    // Validar secret
+    const secretHeader = req.headers['x-webhook-secret'];
+    if (secretHeader !== WEBHOOK_SECRET) {
+      console.warn('⚠️ Secret inválido');
+      return res.status(200).json({ received: true, acknowledged: true, message: 'Invalid secret' });
     }
 
-    const billingId = data.billing.id;
-    const status = data.billing.status?.toUpperCase();
-    const amount = data.billing.amount || 0;
+    // Validar HMAC
+    const signatureHeader = req.headers['x-webhook-signature'];
+    if (signatureHeader && !verifyWebhookSignature(rawBody, signatureHeader, WEBHOOK_SECRET)) {
+      console.warn('⚠️ HMAC signature inválida');
+      return res.status(200).json({ received: true, acknowledged: true, message: 'Invalid signature' });
+    }
 
-    console.log(`💳 Billing: ${billingId}`);
-    console.log(`💰 Valor: R$ ${amount}`);
-    console.log(`✅ Status: ${status}`);
-
-    // ✅ Registrar log do webhook
+    // Parse JSON
+    let body;
     try {
-      await supabase.from('webhook_logs').insert({
-        event,
-        billing_id: billingId,
-        request_body: body,
-        response_status: '200',
-      });
-      console.log('✅ Log registrado');
-    } catch (logError) {
-      console.warn('⚠️ Erro ao registrar log:', logError.message);
+      body = JSON.parse(rawBody);
+    } catch {
+      return res.status(200).json({ received: true, acknowledged: true, error: 'Invalid JSON' });
     }
 
-    // ✅ Se status = PAID, atualizar payment no banco
+    const { id: webhookId, event, data, devMode } = body;
+
+    // Ignorar testes em produção
+    if (devMode === true && isProd) {
+      console.log('🟡 Dev webhook ignorado em produção');
+      return res.status(200).json({ received: true, acknowledged: true, message: 'Dev webhook ignored' });
+    }
+
+    // Idempotência
+    if (webhookId) {
+      const { data: existing } = await supabase
+        .from('webhook_processing')
+        .select('id')
+        .eq('id', webhookId)
+        .maybeSingle();
+
+      if (existing) {
+        return res.status(200).json({ received: true, acknowledged: true, message: 'Already processed' });
+      }
+    }
+
+    // Validar payload
+    if (!data?.billing?.id) {
+      return res.status(200).json({ received: true, acknowledged: true, error: 'Invalid payload' });
+    }
+
+    const { id: billingId, status } = data.billing;
+
+    // Confirmar inscrição se PAID
     if (status === 'PAID') {
-      console.log('\n🎯 Processando confirmação de pagamento...');
-      
-      const { data: payment, error: fetchError } = await supabase
+      const { data: payment } = await supabase
         .from('payments')
         .select('id, registration_id')
         .eq('billing_id', billingId)
         .single();
 
-      if (fetchError) {
-        console.warn('⚠️ Payment não encontrado:', billingId);
-        return res.status(200).json({ ok: true, message: 'Payment not found' });
-      }
-
       if (payment?.id) {
-        // Atualizar payment
-        const { error: updateError } = await supabase
-          .from('payments')
-          .update({ status: 'confirmed' })
-          .eq('id', payment.id);
-
-        if (!updateError) {
-          console.log('✅ Payment atualizado para CONFIRMED');
-
-          // Atualizar registration
-          const { error: regError } = await supabase
-            .from('event_registrations')
-            .update({ status: 'confirmed' })
-            .eq('id', payment.registration_id);
-
-          if (!regError) {
-            console.log('✅ Registration atualizado para CONFIRMED');
-            console.log('\n🎉 Pagamento confirmado com sucesso!\n');
-          }
-        } else {
-          console.error('❌ Erro ao atualizar payment:', updateError.message);
-        }
+        await supabase.from('payments').update({ status: 'confirmed' }).eq('id', payment.id);
+        await supabase.from('event_registrations').update({ status: 'confirmed' }).eq('id', payment.registration_id);
+        console.log(`✅ Inscrição #${payment.registration_id} confirmada`);
       }
     }
 
-    res.status(200).json({ ok: true, message: 'Webhook processed' });
+    // Marcar como processado
+    if (webhookId) {
+      await supabase.from('webhook_processing').insert({
+        id: webhookId,
+        event: event,
+        status: 'processed'
+      }).catch(() => null);
+    }
+
+    res.status(200).json({ received: true, acknowledged: true, message: 'Webhook processed' });
+
   } catch (error) {
-    console.error('❌ Erro ao processar webhook:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Webhook error:', error.message);
+    res.status(200).json({ received: true, acknowledged: true, error: error.message });
   }
 });
 
 app.listen(PORT, () => {
-  const apiKey = process.env.VITE_ABACATEPAY_KEY || 'não configurada';
-  console.log(`\n✅ Backend de pagamentos rodando em http://localhost:${PORT}`);
-  console.log(`� API AbacatePay Key: ${apiKey.substring(0, 15)}...`);
-  console.log(`📌 Modo: ${apiKey.startsWith('abc_prod') ? '🔴 PRODUÇÃO' : '🟢 DESENVOLVIMENTO'}`);
-  console.log(`\n📍 Endpoints:`);
-  console.log(`   POST /api/payment/create    - Criar cobrança`);
-  console.log(`   GET  /api/payment/:id       - Consultar status`);
-  console.log(`   GET  /api/coupons/list      - Listar cupons`);
-  console.log(`   GET  /api/coupon/validate/:code - Validar cupom`);
-  console.log(`   POST /api/webhook/abacatepay   - Processar webhook [NOVO]`);
-  console.log(`   GET  /api/webhook/logs      - Monitor webhooks\n`);
+  console.log(`✅ Backend rodando em http://localhost:${PORT}`);
+  console.log(`📌 Modo: ${isProd ? '🔴 PRODUÇÃO' : '🟢 DESENVOLVIMENTO'}`);
 });
