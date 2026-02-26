@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Backend (Express + Node.js)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - VITE_SUPABASE_URL=https://cwzmiznlvhhnpjgxgsme.supabase.co
+      - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3em1pem5sdmhobnBqZ3hnc21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTY5NzcsImV4cCI6MjA4NzA5Mjk3N30.nsXSSPW2yajdEy-iFlDmtIH-AltsNZ3n8BcNkqTJ4F4
+      - VITE_ABACATEPAY_KEY=abc_dev_wsc2xLB4mS4cjj2LX3DUryzY
+      - ABACATEPAY_WEBHOOK_SECRET=qwe123123
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: node server.js
+    networks:
+      - church-network
+
+  # Frontend (Vite React)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - VITE_BACKEND_URL=http://backend:3001
+      - VITE_SUPABASE_URL=https://cwzmiznlvhhnpjgxgsme.supabase.co
+      - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3em1pem5sdmhobnBqZ3hnc21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTY5NzcsImV4cCI6MjA4NzA5Mjk3N30.nsXSSPW2yajdEy-iFlDmtIH-AltsNZ3n8BcNkqTJ4F4
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - church-network
+
+networks:
+  church-network:
+    driver: bridge

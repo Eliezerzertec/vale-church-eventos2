@@ -95,18 +95,46 @@ class AbacatePay {
     body?: any
   ): Promise<AbacatePayResponse<T>> {
     try {
-      const url = `${API_BASE}/${API_VERSION}${endpoint}`;
+      // Em dev: usa backend local para evitar CORS
+      // Em produção: usa AbacatePay direto (hosting próprio com CORS habilitado)
+      // ✅ FIX: Usar VITE_BACKEND_URL para determinar se deve usar backend
+      const backendUrl = import.meta.env.VITE_BACKEND_URL;
+      const isDev = import.meta.env.DEV || (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"));
+      const useBackend = isDev && !!backendUrl;
+      
+      console.log("🔍 Request Config:", { isDev, useBackend, backendUrl, hostname: typeof window !== "undefined" ? window.location.hostname : "SSR" });
 
-      console.log("� AbacatePay Request:", { method, url, body });
+      let response: Response;
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      if (useBackend) {
+        // Chamar via backend local (sem CORS bloqueado)
+        // Usa o mesmo hostname do browser + porta 3001 do backend
+        const backendHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
+        const backendUrl = `http://${backendHost}:3001/api/payment/create`;
+        
+        console.log("📤 AbacatePay Request (via backend):", { endpoint, bodyKeys: Object.keys(body || {}), backendUrl });
+
+        response = await fetch(backendUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ method, endpoint, body }),
+        });
+      } else {
+        // Chamar direto a API AbacatePay (servidor/produção com CORS permitido)
+        const url = `${API_BASE}/${API_VERSION}${endpoint}`;
+        console.log("📤 AbacatePay Request (direto):", { method, url, bodyKeys: Object.keys(body || {}) });
+
+        response = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      }
 
       const responseData = await response.json().catch(() => null);
 
@@ -114,6 +142,7 @@ class AbacatePay {
         status: response.status,
         statusText: response.statusText,
         body: responseData,
+        keys: responseData ? Object.keys(responseData) : [],
       });
 
       if (!response.ok) {
@@ -122,13 +151,30 @@ class AbacatePay {
         return { data: null, error: errorMessage };
       }
 
-      if ((responseData as any)?.error) {
+      // Se chegou aqui pelo backend, responseData tem { error, data }
+      if (useBackend && responseData?.error) {
+        console.error("❌ AbacatePay Error (backend):", responseData.error);
+        return { data: null, error: responseData.error };
+      }
+
+      // Se chegou direto, verifica error no body
+      if (!useBackend && (responseData as any)?.error) {
         const errorMessage = (responseData as any)?.error?.message || (responseData as any)?.error || `HTTP ${response.status}`;
         console.error("❌ AbacatePay Error Body:", errorMessage);
         return { data: null, error: errorMessage };
       }
 
-      return { data: responseData as T, error: null };
+      // Retornar data (se backend, já vem em responseData.data)
+      const finalData = useBackend ? responseData?.data : responseData;
+      
+      console.log("✅ Final Data Extracted:", {
+        useBackend,
+        finalDataKeys: finalData ? Object.keys(finalData) : [],
+        hasUrl: !!(finalData?.url || finalData?.paymentUrl || finalData?.checkoutUrl),
+        url: finalData?.url || finalData?.paymentUrl || finalData?.checkoutUrl,
+      });
+      
+      return { data: finalData as T, error: null };
     } catch (error: any) {
       console.error("❌ AbacatePay Exception:", {
         message: error.message,
@@ -195,5 +241,6 @@ class AbacatePay {
 
 // Inicializar cliente
 const apiKey = import.meta.env.VITE_ABACATEPAY_KEY;
+
 export const abacatepay = new AbacatePay(apiKey);
 export default abacatepay;

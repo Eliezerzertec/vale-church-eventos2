@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PaymentReceipt from "@/components/PaymentReceipt";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useState } from "react";
@@ -15,23 +16,48 @@ import { useToast } from "@/hooks/use-toast";
 
 // Resolve possíveis campos de link de checkout retornados pela AbacatePay
 const resolveCheckoutUrl = (billing: any): string | null => {
-  if (!billing) return null;
+  if (!billing) {
+    console.warn("⚠️ Billing object é null/undefined");
+    return null;
+  }
 
   const candidates = [
-    billing.url,
-    billing.paymentUrl,
-    billing.checkoutUrl,
-    billing.paymentLink,
-    billing.payment_link,
-    billing.redirectUrl,
-    billing.redirect_url,
-    billing?.checkout?.url,
-    billing?.data?.url,
-    billing?.data?.paymentUrl,
-    billing?.data?.checkoutUrl,
-  ].filter((v) => typeof v === "string" && v.length > 0);
+    { source: "billing.url", value: billing.url },
+    { source: "billing.paymentUrl", value: billing.paymentUrl },
+    { source: "billing.checkoutUrl", value: billing.checkoutUrl },
+    { source: "billing.paymentLink", value: billing.paymentLink },
+    { source: "billing.payment_link", value: billing.payment_link },
+    { source: "billing.redirectUrl", value: billing.redirectUrl },
+    { source: "billing.redirect_url", value: billing.redirect_url },
+    { source: "billing?.checkout?.url", value: billing?.checkout?.url },
+    { source: "billing?.data?.url", value: billing?.data?.url },
+    { source: "billing?.data?.paymentUrl", value: billing?.data?.paymentUrl },
+    { source: "billing?.data?.checkoutUrl", value: billing?.data?.checkoutUrl },
+  ].filter(c => typeof c.value === "string" && c.value.length > 0);
 
-  return candidates.length > 0 ? candidates[0] : null;
+  console.log("🔍 Billing Object de resoluçao de URL:", {
+    billingKeys: Object.keys(billing),
+    candidatesTested: [
+      { source: "billing.url", value: billing.url },
+      { source: "billing.paymentUrl", value: billing.paymentUrl },
+      { source: "billing.checkoutUrl", value: billing.checkoutUrl },
+      { source: "billing.paymentLink", value: billing.paymentLink },
+      { source: "billing.payment_link", value: billing.payment_link },
+      { source: "billing.redirectUrl", value: billing.redirectUrl },
+      { source: "billing.redirect_url", value: billing.redirect_url },
+    ],
+    candidatesFound: candidates.length,
+    selectedUrl: candidates.length > 0 ? candidates[0].source : "NENHUM",
+  });
+
+  if (candidates.length === 0) {
+    console.error("❌ Nenhuma URL de checkout encontrada em:", JSON.stringify(billing, null, 2));
+    return null;
+  }
+
+  const result = candidates[0].value;
+  console.log(`✅ URL de checkout resolvida via ${candidates[0].source}:`, result);
+  return result;
 };
 
 const EventDetailPage = () => {
@@ -39,14 +65,34 @@ const EventDetailPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", cpf: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", cpf: "", coupon: "" });
   const [submitted, setSubmitted] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [paymentReturnStatus, setPaymentReturnStatus] = useState<string | null>(null);
-  const [paymentReturnInfo, setPaymentReturnInfo] = useState<{ registrationId?: string; paymentUrl?: string } | null>(null);
+  const [paymentReturnInfo, setPaymentReturnInfo] = useState<{ 
+    registrationId?: string; 
+    paymentUrl?: string;
+    billingId?: string;
+    paymentDate?: string;
+    paymentMethod?: "PIX" | "CARD";
+    receiptUrl?: string;
+    transactionId?: string;
+    couponCode?: string;
+    discountAmount?: number;
+  } | null>(null);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  
+  // Validação de cupom
+  const [couponData, setCouponData] = useState<{
+    discountKind: "PERCENTAGE" | "FIXED";
+    discount: number;
+    redeemsCount?: number;
+    maxRedeems?: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
   const isPaymentReturn = searchParams.get("pagamento") === "ok";
 
@@ -78,6 +124,81 @@ const EventDetailPage = () => {
     enabled: !!id,
   });
 
+  // Validar cupom quando usuário sair do campo
+  const handleValidateCoupon = async (code: string) => {
+    if (!code.trim()) {
+      setCouponData(null);
+      setCouponError(null);
+      return;
+    }
+
+    setValidatingCoupon(true);
+    setCouponError(null);
+
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+      const res = await fetch(`${backendUrl}/api/coupon/validate/${code.trim().toUpperCase()}`);
+      const result = await res.json();
+
+      if (result.error || !result.data) {
+        setCouponError(result.error || "Cupom inválido");
+        setCouponData(null);
+        return;
+      }
+
+      // Validar se cupom está ativo
+      if (result.data.status !== "ACTIVE") {
+        setCouponError("Cupom inativo ou expirado");
+        setCouponData(null);
+        return;
+      }
+
+      // Validar limite de resgates
+      if (result.data.maxRedeems > 0 && result.data.redeemsCount >= result.data.maxRedeems) {
+        setCouponError("Cupom atingiu o limite de resgates");
+        setCouponData(null);
+        return;
+      }
+
+      setCouponData({
+        discountKind: result.data.discountKind,
+        discount: result.data.discount,
+        redeemsCount: result.data.redeemsCount,
+        maxRedeems: result.data.maxRedeems,
+      });
+    } catch (err) {
+      console.error("Erro ao validar cupom:", err);
+      setCouponError("Erro ao validar cupom. Tente novamente.");
+      setCouponData(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  // Calcular desconto em reais
+  const calculateDiscountAmount = (): number => {
+    if (!couponData || !event?.price) return 0;
+
+    const amountInReais = Number(event.price);
+
+    if (couponData.discountKind === "PERCENTAGE") {
+      // Desconto percentual
+      return (amountInReais * couponData.discount) / 100;
+    } else if (couponData.discountKind === "FIXED") {
+      // Desconto fixo em centavos, converter para reais
+      return couponData.discount / 100;
+    }
+
+    return 0;
+  };
+
+  // Preço final após desconto
+  const getFinalPrice = (): number => {
+    const originalPrice = Number(event?.price || 0);
+    const discountAmount = calculateDiscountAmount();
+    return Math.max(0, originalPrice - discountAmount);
+  };
+
   // Quando a AbacatePay redireciona de volta com ?pagamento=ok, confirmamos status
   useEffect(() => {
     if (!isPaymentReturn) return;
@@ -95,7 +216,7 @@ const EventDetailPage = () => {
       setIsCheckingPayment(true);
       supabase
         .from("payments")
-        .select("status,payment_url,registration_id,billing_id")
+        .select("*")
         .eq("registration_id", stored.registrationId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -104,7 +225,13 @@ const EventDetailPage = () => {
           setPaymentReturnStatus(data?.status || "pending");
           setPaymentReturnInfo({
             registrationId: stored.registrationId,
-            paymentUrl: data?.payment_url || stored.paymentUrl,
+            transactionId: data?.transaction_id,
+            billingId: data?.billing_id,
+            paymentDate: data?.created_at,
+            paymentMethod: data?.payment_method,
+            receiptUrl: data?.receipt_url,
+            couponCode: data?.coupon_code,
+            discountAmount: data?.discount_amount,
           });
         })
         .catch(() => {
@@ -146,10 +273,14 @@ const EventDetailPage = () => {
 
       // 2. Se evento for pago, criar cobrança (PIX + CARTÃO) via /billing/create
       if (!event?.is_free) {
-        const amountInReais = Number(event?.price || 0);
+        // Usar preço com desconto se cupom foi validado
+        const amountInReais = calculateDiscountAmount() > 0 ? getFinalPrice() : Number(event?.price || 0);
         const amountInCents = Math.round(amountInReais * 100);
 
-        const { data: billing, error: billingError } = await abacatepay.billing.create({
+        // ✅ URLs de retorno - será atualizado com billing.id real APÓS criar a cobrança
+        const baseConfirmationUrl = `${window.location.origin}/payment-confirmation/${id}?registration_id=${regData.id}`;
+        
+        const billingParams: any = {
           frequency: "ONE_TIME",
           methods: ["PIX", "CARD"],
           products: [
@@ -161,8 +292,9 @@ const EventDetailPage = () => {
               price: amountInCents,
             },
           ],
-          returnUrl: `${window.location.origin}/eventos/${id}`,
-          completionUrl: `${window.location.origin}/eventos/${id}?pagamento=ok`,
+          // returnUrl e completionUrl usam placeholder - serão atualizadas com billing.id real
+          returnUrl: `${baseConfirmationUrl}&billing_id=PENDING`,
+          completionUrl: `${baseConfirmationUrl}&billing_id=PENDING`,
           customer: {
             name: form.full_name,
             email: form.email,
@@ -173,32 +305,67 @@ const EventDetailPage = () => {
               event_id: id,
             },
           },
-        });
+        };
+        
+        // Adicionar cupom se fornecido e validado
+        if (form.coupon?.trim() && couponData) {
+          billingParams.couponId = form.coupon.trim().toUpperCase();
+          console.log("📌 Cupom aplicado:", billingParams.couponId);
+          console.log("💰 Desconto:", calculateDiscountAmount(), "reais | Preço final:", amountInReais);
+        }
+        
+        const { data: billing, error: billingError } = await abacatepay.billing.create(billingParams);
 
         const checkoutUrl = resolveCheckoutUrl(billing);
 
         if (billingError || !billing || !checkoutUrl) {
+          // Log detalhado do erro
+          console.error("❌ Falha ao processar pagamento:", {
+            hasError: !!billingError,
+            billingError,
+            billingExists: !!billing,
+            billingType: typeof billing,
+            billingKeys: billing ? Object.keys(billing) : [],
+            checkoutUrl,
+            checkoutUrlEvaluation: {
+              hasUrl: !!billing?.url,
+              hasPaymentUrl: !!billing?.paymentUrl,
+              hasCheckoutUrl: !!billing?.checkoutUrl,
+              hasPaymentLink: !!billing?.paymentLink,
+              hasPaymentLinkUnderscore: !!billing?.payment_link,
+              hasRedirectUrl: !!billing?.redirectUrl,
+              hasRedirectUrlUnderscore: !!billing?.redirect_url,
+            },
+            fullBilling: JSON.stringify(billing, null, 2),
+          });
+
           // Cancelar inscrição se falhar criar cobrança
           await supabase
             .from("event_registrations")
             .update({ status: "cancelled" })
             .eq("id", regData.id);
           console.warn("AbacatePay billing sem URL", { billing, billingError });
-          throw new Error(billingError || "Erro ao criar cobrança (link não retornado)");
+          throw new Error(billingError || "Erro ao criar cobrança (link não retornado). Verifique o console para mais detalhes.");
         }
 
         setPaymentUrl(checkoutUrl);
 
         // 3. Salvar pagamento no banco
+        const discountAmount = calculateDiscountAmount();
         const { error: paymentError } = await supabase.from("payments").insert({
           registration_id: regData.id,
           event_id: id!,
-          amount: amountInReais,
+          amount: Number(event?.price || 0), // Valor original
           status: "pending",
           billing_id: billing.id,
+          transaction_id: billing.id,
+          receipt_url: billing.receipt_url,
+          payment_method: "PIX", // será atualizado quando confirmar
+          coupon_code: form.coupon?.trim().toUpperCase() || null,
+          discount_amount: discountAmount, // Desconto validado e calculado
           registration_email: form.email,
           registration_name: form.full_name,
-          payment_url: checkoutUrl,
+          payment_url: `${window.location.origin}/payment-confirmation/${id}?registration_id=${regData.id}&billing_id=${billing.id}`,
         });
 
         if (paymentError) {
@@ -399,37 +566,55 @@ const EventDetailPage = () => {
                 ) : (
                 <>
                 {isPaymentReturn && (
-                  <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                  <>
                     {isCheckingPayment ? (
-                      "Confirmando pagamento..."
-                    ) : paymentReturnStatus === "paid" ? (
-                      <div className="space-y-1">
-                        <div className="font-semibold">Pagamento confirmado</div>
-                        <div>Obrigado! Sua inscrição está confirmada e você receberá um email.</div>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="font-semibold">Estamos processando</div>
-                        <div>
-                          Recebemos seu retorno. Se ainda não constar como pago, aguarde alguns segundos ou reabra o checkout.
+                      <div className="text-center py-12">
+                        <div className="inline-block animate-spin">
+                          <CheckCircle className="h-12 w-12 text-primary" />
                         </div>
+                        <p className="mt-4 text-muted-foreground">Confirmando pagamento...</p>
+                      </div>
+                    ) : paymentReturnStatus === "paid" ? (
+                      // Mostrar comprovante de pagamento
+                      <PaymentReceipt
+                        eventTitle={event.title}
+                        participantName={form.full_name}
+                        participantEmail={form.email}
+                        amount={Number(event.price) || 0}
+                        paymentMethod={paymentReturnInfo?.paymentMethod || "PIX"}
+                        transactionId={paymentReturnInfo?.registrationId || ""}
+                        paidAt={paymentReturnInfo?.paymentDate || new Date().toISOString()}
+                        eventDate={event.event_date}
+                        billingId={paymentReturnInfo?.billingId}
+                        receiptUrl={paymentReturnInfo?.receiptUrl}
+                        couponCode={paymentReturnInfo?.couponCode}
+                        discountAmount={paymentReturnInfo?.discountAmount}
+                      />
+                    ) : (
+                      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        <div className="space-y-1">
+                          <div className="font-semibold">Estamos processando</div>
+                          <div>
+                            Recebemos seu retorno. Se ainda não constar como pago, aguarde alguns segundos ou reabra o checkout.
+                          </div>
+                        </div>
+                        {paymentReturnInfo?.paymentUrl && (
+                          <div className="mt-3">
+                            <a
+                              href={paymentReturnInfo.paymentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block text-sm font-semibold text-primary underline underline-offset-4"
+                            >
+                              Abrir checkout novamente
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
-                    {paymentReturnStatus !== "paid" && paymentReturnInfo?.paymentUrl && (
-                      <div className="mt-3">
-                        <a
-                          href={paymentReturnInfo.paymentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block text-sm font-semibold text-primary underline underline-offset-4"
-                        >
-                          Abrir checkout novamente
-                        </a>
-                      </div>
-                    )}
-                  </div>
+                  </>
                 )}
-                    {submitted ? (
+                    {submitted && !isPaymentReturn ? (
                   <div className="text-center py-8">
                     {event?.is_free ? (
                       <>
@@ -492,14 +677,65 @@ const EventDetailPage = () => {
                           <Label htmlFor="cpf">CPF</Label>
                           <Input id="cpf" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} />
                         </div>
-                        <Button type="submit" className="w-full gradient-gold text-secondary font-semibold shadow-gold" disabled={registerMutation.isPending || isChecking}>
+                        <div>
+                          <Label htmlFor="coupon">Cupom de Desconto (opcional)</Label>
+                          <Input 
+                            id="coupon" 
+                            placeholder="Digite o código do cupom" 
+                            value={form.coupon} 
+                            onChange={(e) => setForm({ ...form, coupon: e.target.value })}
+                            onBlur={(e) => handleValidateCoupon(e.target.value)}
+                            disabled={validatingCoupon}
+                          />
+                          {validatingCoupon && (
+                            <p className="text-xs text-muted-foreground mt-1">Validando cupom...</p>
+                          )}
+                          {couponError && (
+                            <p className="text-xs text-destructive mt-1">{couponError}</p>
+                          )}
+                          {couponData && !couponError && (
+                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                              <p className="font-medium">✓ Cupom válido!</p>
+                              <p className="text-xs mt-1">
+                                Desconto: {couponData.discountKind === "PERCENTAGE" 
+                                  ? `${couponData.discount}%` 
+                                  : `R$ ${(couponData.discount / 100).toFixed(2)}`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {!event?.is_free && (
+                          <div className="bg-secondary/50 rounded p-3 text-sm">
+                            <div className="flex justify-between mb-2">
+                              <span>Valor:</span>
+                              <span>R$ {Number(event?.price || 0).toFixed(2)}</span>
+                            </div>
+                            {calculateDiscountAmount() > 0 && (
+                              <>
+                                <div className="flex justify-between text-destructive mb-2">
+                                  <span>Desconto:</span>
+                                  <span>-R$ {calculateDiscountAmount().toFixed(2)}</span>
+                                </div>
+                                <div className="border-t border-border/30 pt-2 flex justify-between font-bold">
+                                  <span>Total a pagar:</span>
+                                  <span className="text-green-600">R$ {getFinalPrice().toFixed(2)}</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        
+                        <Button type="submit" className="w-full gradient-gold text-secondary font-semibold shadow-gold" disabled={registerMutation.isPending || isChecking || validatingCoupon}>
                           {registerMutation.isPending
                             ? "Processando..."
                             : isChecking
                               ? "Verificando..."
-                              : event.is_free
-                                ? "Confirmar Inscrição"
-                                : "Inscrever-se e Pagar"}
+                              : validatingCoupon
+                                ? "Validando cupom..."
+                                : event.is_free
+                                  ? "Confirmar Inscrição"
+                                  : "Inscrever-se e Pagar"}
                         </Button>
                       </form>
                     )}

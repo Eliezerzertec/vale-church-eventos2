@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -62,6 +62,16 @@ const AdminRegistrations = () => {
     },
   });
 
+  // Polling automático a cada 60 segundos para verificar status de pagamento
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("🔄 Verificando status de pagamentos...");
+      refetch();
+    }, 60000); // 60 segundos
+
+    return () => clearInterval(interval);
+  }, [refetch]);
+
   const updateMutation = useMutation({
     mutationFn: async (updatedReg: Partial<Registration> & { id: string }) => {
       const { id, ...updates } = updatedReg;
@@ -87,6 +97,18 @@ const AdminRegistrations = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (regId: string) => {
+      // 1. Primeiro deletar o pagamento vinculado (se existir)
+      const { error: paymentError } = await supabase
+        .from("payments")
+        .delete()
+        .eq("registration_id", regId);
+      
+      if (paymentError) {
+        console.warn("Aviso ao deletar pagamento:", paymentError);
+        // Continua mesmo se não tiver pagamento
+      }
+
+      // 2. Depois deletar a inscrição
       const { error } = await supabase
         .from("event_registrations")
         .delete()
