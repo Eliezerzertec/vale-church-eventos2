@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 180 15% 97%;
+    --foreground: 200 25% 12%;
+
+    --card: 180 12% 99%;
+    --card-foreground: 200 25% 12%;
+
+    --popover: 180 12% 99%;
+    --popover-foreground: 200 25% 12%;
+
+    --primary: 178 55% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 200 30% 15%;
+    --secondary-foreground: 180 15% 97%;
+
+    --muted: 180 10% 92%;
+    --muted-foreground: 200 12% 45%;
+
+    --accent: 178 45% 55%;
+    --accent-foreground: 200 30% 10%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 180 10% 88%;
+    --input: 180 10% 88%;
+    --ring: 178 55% 45%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 200 30% 12%;
+    --sidebar-foreground: 180 15% 92%;
+    --sidebar-primary: 178 55% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 25% 20%;
+    --sidebar-accent-foreground: 180 15% 92%;
+    --sidebar-border: 200 25% 22%;
+    --sidebar-ring: 178 55% 50%;
+
+    /* Custom tokens */
+    --church-gold: 178 55% 45%;
+    --church-gold-light: 178 45% 60%;
+    --church-navy: 200 30% 15%;
+    --church-navy-deep: 200 35% 10%;
+    --church-warm: 180 15% 95%;
+    --church-cream: 180 20% 96%;
+
+    --gradient-hero: linear-gradient(to top, hsl(200 35% 5% / 0.95) 0%, hsl(200 30% 10% / 0.75) 40%, hsl(200 25% 15% / 0.5) 70%, hsl(200 20% 15% / 0.3) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(178 55% 42%), hsl(178 45% 55%));
+    --gradient-warm: linear-gradient(180deg, hsl(180 15% 97%), hsl(180 20% 96%));
+
+    --shadow-soft: 0 4px 20px -4px hsl(200 30% 15% / 0.08);
+    --shadow-gold: 0 8px 30px -8px hsl(178 55% 45% / 0.25);
+    --shadow-card: 0 2px 12px -2px hsl(200 30% 15% / 0.06);
+
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  .dark {
+    --background: 200 30% 8%;
+    --foreground: 180 15% 92%;
+    --card: 200 28% 11%;
+    --card-foreground: 180 15% 92%;
+    --popover: 200 28% 11%;
+    --popover-foreground: 180 15% 92%;
+    --primary: 178 55% 50%;
+    --primary-foreground: 200 30% 8%;
+    --secondary: 200 25% 18%;
+    --secondary-foreground: 180 15% 92%;
+    --muted: 200 22% 16%;
+    --muted-foreground: 180 8% 60%;
+    --accent: 178 45% 55%;
+    --accent-foreground: 200 30% 8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 22% 20%;
+    --input: 200 22% 20%;
+    --ring: 178 55% 50%;
+    --sidebar-background: 200 35% 6%;
+    --sidebar-foreground: 180 15% 92%;
+    --sidebar-primary: 178 55% 50%;
+    --sidebar-primary-foreground: 200 30% 8%;
+    --sidebar-accent: 200 25% 13%;
+    --sidebar-accent-foreground: 180 15% 92%;
+    --sidebar-border: 200 22% 16%;
+    --sidebar-ring: 178 55% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  .gradient-gold {
+    background: var(--gradient-gold);
+  }
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-gold {
+    box-shadow: var(--shadow-gold);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .text-gold {
+    color: hsl(var(--church-gold));
+  }
+  .bg-navy {
+    background-color: hsl(var(--church-navy));
+  }
+  .bg-navy-deep {
+    background-color: hsl(var(--church-navy-deep));
+  }
+  .bg-church-warm {
+    background-color: hsl(var(--church-warm));
+  }
+  .bg-church-cream {
+    background-color: hsl(var(--church-cream));
+  }
+}

@@ -1,0 +1,4 @@
+project_id = "cwzmiznlvhhnpjgxgsme"
+
+[functions.pix-webhook]
+verify_jwt = false
