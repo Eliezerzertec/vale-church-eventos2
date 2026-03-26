@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Calendar, Users, CreditCard, FileText, LogOut, UserCircle, Music2, Settings } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, CreditCard, FileText, LogOut, UserCircle, Music2, Settings, Menu, X, Gift } from "lucide-react";
 import logo from "@/assets/logo-vale.png";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +10,7 @@ const AdminLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -67,38 +68,75 @@ const AdminLayout = () => {
   if (!isAdmin) return null;
 
   const navItems = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/eventos", label: "Eventos", icon: Calendar },
-    { href: "/admin/inscricoes", label: "Inscrições", icon: Users },
-    { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
-    { href: "/admin/relatorios", label: "Relatórios", icon: FileText },
-    { href: "/admin/audicoes", label: "Audições", icon: Music2 },
-    { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+    { 
+      category: "VISÃO GERAL",
+      items: [
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      ]
+    },
+    {
+      category: "GERENCIAMENTO",
+      items: [
+        { href: "/admin/eventos", label: "Eventos", icon: Calendar },
+        { href: "/admin/inscricoes", label: "Inscrições", icon: Users },
+        { href: "/admin/audicoes", label: "Audições", icon: Music2 },
+      ]
+    },
+    {
+      category: "OPERACIONAL",
+      items: [
+        { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
+        { href: "/admin/cupons", label: "Cupons", icon: Gift },
+        { href: "/admin/relatorios", label: "Relatórios", icon: FileText },
+      ]
+    },
+    {
+      category: "CONFIGURAÇÃO",
+      items: [
+        { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+      ]
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-secondary border-r border-border/50 flex flex-col shrink-0">
-        <div className="p-4 border-b border-border/30 space-y-3">
-          {/* Avatar e Info do Usuário */}
-          <Link to="/admin/perfil" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="w-12 h-12 rounded-lg bg-muted border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={user?.email} className="w-full h-full object-cover" />
-              ) : (
-                <UserCircle className="h-6 w-6 text-primary" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-secondary-foreground truncate">
-                {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Admin"}
-              </p>
-              <p className="text-xs text-secondary-foreground/60 truncate">{user?.email}</p>
-            </div>
-          </Link>
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center justify-between bg-secondary border-b border-border/50 p-4 sticky top-0 z-40">
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logo} alt="Vale Church Lavras" className="h-8 w-8 rounded-full object-cover" />
+          <div>
+            <span className="font-display text-sm font-bold text-secondary-foreground">Vale</span>
+          </div>
+        </Link>
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-2 hover:bg-secondary-foreground/10 rounded-lg transition-colors"
+        >
+          {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
 
-          {/* Logo/Brand */}
+      {/* Overlay para mobile */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-30 top-[61px]"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed md:relative
+        w-64 bg-secondary border-r border-border/50
+        flex flex-col shrink-0
+        transition-all duration-300 ease-in-out
+        h-[calc(100vh-61px)] md:h-screen
+        z-40
+        ${sidebarOpen ? "left-0" : "-left-64 md:left-0"}
+        md:top-0
+      `}>
+        <div className="hidden md:block p-4 border-b border-border/30 space-y-3">
+          {/* Logo/Brand - Desktop */}
           <Link to="/" className="flex items-center gap-2">
             <img src={logo} alt="Vale Church Lavras" className="h-8 w-8 rounded-full object-cover" />
             <div>
@@ -108,42 +146,61 @@ const AdminLayout = () => {
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-secondary-foreground/70 hover:bg-secondary-foreground/5 hover:text-secondary-foreground"
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-3 overflow-y-auto">
+          {navItems.map((group) => (
+            <div key={group.category} className="mb-6">
+              <div className="px-3 py-2 mb-2">
+                <p className="text-xs font-bold text-secondary-foreground/50 tracking-wider uppercase">
+                  {group.category}
+                </p>
+              </div>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "text-secondary-foreground/70 hover:bg-secondary-foreground/5 hover:text-secondary-foreground"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="p-3 border-t border-border/30 space-y-2">
-          <Link to="/admin/perfil">
-            <Button variant="ghost" className="w-full justify-start text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/5">
-              <UserCircle className="mr-2 h-4 w-4" />
+          <Link to="/admin/perfil" onClick={() => setSidebarOpen(false)}>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-secondary-foreground/60 hover:text-secondary-foreground hover:bg-secondary-foreground/5 text-sm h-10"
+            >
+              <UserCircle className="mr-3 h-4 w-4 flex-shrink-0" />
               Meu Perfil
             </Button>
           </Link>
-          <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-secondary-foreground/60 hover:text-destructive">
-            <LogOut className="mr-2 h-4 w-4" />
+          <Button 
+            onClick={handleLogout} 
+            variant="ghost" 
+            className="w-full justify-start text-secondary-foreground/60 hover:text-destructive hover:bg-red-50 text-sm h-10"
+          >
+            <LogOut className="mr-3 h-4 w-4 flex-shrink-0" />
             Sair
           </Button>
         </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto w-full">
         <Outlet />
       </main>
     </div>

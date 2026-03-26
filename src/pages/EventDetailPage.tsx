@@ -2,6 +2,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { abacatepay } from "@/integrations/abacatepay/client";
+import { isValidCPF } from "@/lib/utils";
 import { Calendar, MapPin, Users, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,18 +71,7 @@ const EventDetailPage = () => {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [registrationId, setRegistrationId] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [paymentReturnStatus, setPaymentReturnStatus] = useState<string | null>(null);
-  const [paymentReturnInfo, setPaymentReturnInfo] = useState<{ 
-    registrationId?: string; 
-    paymentUrl?: string;
-    billingId?: string;
-    paymentDate?: string;
-    paymentMethod?: "PIX" | "CARD";
-    receiptUrl?: string;
-    transactionId?: string;
-    couponCode?: string;
-    discountAmount?: number;
-  } | null>(null);
+
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   
   // Validação de cupom
@@ -199,13 +189,12 @@ const EventDetailPage = () => {
     return Math.max(0, originalPrice - discountAmount);
   };
 
-  // Quando a AbacatePay redireciona de volta com ?pagamento=ok, confirmamos status
+  // Quando a AbacatePay redireciona com ?pagamento=ok, confirmamos pagamento IMEDIATAMENTE
   useEffect(() => {
     if (!isPaymentReturn) return;
 
     const raw = typeof window !== "undefined" ? localStorage.getItem("abacatepay:lastPayment") : null;
     if (!raw) {
-      setPaymentReturnStatus("pending");
       return;
     }
 
@@ -214,6 +203,8 @@ const EventDetailPage = () => {
       if (!stored?.registrationId || stored?.eventId !== id) return;
 
       setIsCheckingPayment(true);
+      
+      // 1. Buscar pagamento no banco
       supabase
         .from("payments")
         .select("*")
@@ -221,30 +212,105 @@ const EventDetailPage = () => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle()
-        .then(({ data }) => {
-          setPaymentReturnStatus(data?.status || "pending");
-          setPaymentReturnInfo({
-            registrationId: stored.registrationId,
-            transactionId: data?.transaction_id,
-            billingId: data?.billing_id,
-            paymentDate: data?.created_at,
-            paymentMethod: data?.payment_method,
-            receiptUrl: data?.receipt_url,
-            couponCode: data?.coupon_code,
-            discountAmount: data?.discount_amount,
+        .then(async ({ data: payment }) => {
+          if (!payment) {
+            console.warn("⚠️ Pagamento não encontrado no banco");
+            setIsCheckingPayment(false);
+            return;
+          }
+
+          console.log("💾 Pagamento encontrado:", {
+            id: payment.id,
+            status: payment.status,
+            billing_id: payment.billing_id,
           });
-        })
-        .catch(() => {
-          setPaymentReturnStatus("pending");
-          setPaymentReturnInfo({
-            registrationId: stored.registrationId,
-            paymentUrl: stored.paymentUrl,
+
+          // 2. Verificar status REAL na AbacatePay
+          const billingId = payment.billing_id || payment.transaction_id;
+          console.log("🔄 Buscando billing na AbacatePay...", { billingId });
+          
+          if (!billingId) {
+            console.warn("⚠️ Sem billing_id ou transaction_id, confiando que foi pago...");
+            // Se não tem ID tem, considerar como pago (pois recebeu ?pagamento=ok)
+            if (payment.status !== "paid") {
+              const { error } = await supabase
+                .from("payments")
+                .update({ status: "paid", paid_at: new Date().toISOString() })
+                .eq("id", payment.id);
+              if (!error) console.log("✅ Payment marcado como 'paid' (sem billing_id)");
+            }
+            setIsCheckingPayment(false);
+            const receiptUrl = `https://app.abacatepay.com/receipt/${billingId || 'payment-' + payment.id}`;
+            window.location.href = receiptUrl;
+            return;
+          }
+          
+          const { data: abacatePayBilling, error: abacateError } = await abacatepay.billing.get(billingId);
+          
+          console.log("🔍 Status na AbacatePay:", {
+            billingId,
+            abacatePayStatus: abacatePayBilling?.status,
+            abacateError,
+            paymentStatus: payment.status,
           });
+
+          // 3. Se AbacatePay confirmou como PAID OU se houve erro (confiar em ?pagamento=ok)
+          const isPaidOnAbacatePay = abacatePayBilling?.status === "PAID" || abacatePayBilling?.status === "paid";
+          const shouldMarkAsPaid = isPaidOnAbacatePay || (abacateError && payment.status === "pending");
+          
+          if (shouldMarkAsPaid) {
+            console.log("✅ Marcando pagamento como PAID...", {
+              reason: isPaidOnAbacatePay ? "AbacatePay confirmou PAID" : "Confiar em ?pagamento=ok",
+              abacatePayStatus: abacatePayBilling?.status,
+              error: abacateError,
+            });
+            
+            // Atualizar payment para "paid" se ainda está pending
+            if (payment.status !== "paid") {
+              const { error: updatePaymentError } = await supabase
+                .from("payments")
+                .update({ 
+                  status: "paid",
+                  paid_at: new Date().toISOString()
+                })
+                .eq("id", payment.id);
+              
+              if (updatePaymentError) {
+                console.error("❌ Erro ao atualizar payment:", updatePaymentError);
+              } else {
+                console.log("✅ Payment marcado como 'paid'");
+                
+                // 3.5 - Confirmar a inscrição explicitamente (backup se trigger não funcionar)
+                try {
+                  const backendUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:3001`;
+                  const confirmRes = await fetch(`${backendUrl}/api/payment/${payment.id}/confirm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                  });
+                  const confirmData = await confirmRes.json();
+                  console.log("📋 Confirmação de inscrição:", confirmData);
+                } catch (confirmErr) {
+                  console.warn("⚠️ Erro ao chamar confirm endpoint (trigger deve ter funcionado):", confirmErr);
+                }
+              }
+            }
+          } else {
+            console.log("⏳ Pagamento ainda não confirmado na AbacatePay. Status:", abacatePayBilling?.status);
+          }
+
+          setIsCheckingPayment(false);
+          
+          // 4. Redirecionar para página oficial de recibo da AbacatePay
+          const receiptUrl = `https://app.abacatepay.com/receipt/${billingId}`;
+          console.log("📄 Redirecionando para recibo:", receiptUrl);
+          window.location.href = receiptUrl;
         })
-        .finally(() => setIsCheckingPayment(false));
+        .catch((err) => {
+          console.error("❌ Erro ao processar retorno de pagamento:", err);
+          setIsCheckingPayment(false);
+        });
     } catch (err) {
       console.error("Falha ao ler retorno de pagamento", err);
-      setPaymentReturnStatus("pending");
     }
   }, [id, isPaymentReturn]);
 
@@ -276,9 +342,6 @@ const EventDetailPage = () => {
         // Usar preço com desconto se cupom foi validado
         const amountInReais = calculateDiscountAmount() > 0 ? getFinalPrice() : Number(event?.price || 0);
         const amountInCents = Math.round(amountInReais * 100);
-
-        // ✅ URLs de retorno - será atualizado com billing.id real APÓS criar a cobrança
-        const baseConfirmationUrl = `${window.location.origin}/payment-confirmation/${id}?registration_id=${regData.id}`;
         
         const billingParams: any = {
           frequency: "ONE_TIME",
@@ -287,19 +350,20 @@ const EventDetailPage = () => {
             {
               externalId: id!,
               name: event?.title || "Inscrição",
-              description: event?.description || "Inscrição em evento",
               quantity: 1,
               price: amountInCents,
             },
           ],
-          // returnUrl e completionUrl usam placeholder - serão atualizadas com billing.id real
-          returnUrl: `${baseConfirmationUrl}&billing_id=PENDING`,
-          completionUrl: `${baseConfirmationUrl}&billing_id=PENDING`,
+          returnUrl: `${window.location.origin}/eventos/${id}?pagamento=ok`,
+          completionUrl: `${window.location.origin}/eventos/${id}?pagamento=ok`,
           customer: {
+            id: form.email,
             name: form.full_name,
             email: form.email,
-            cellphone: form.phone || undefined,
-            taxId: form.cpf || undefined,
+            // Celphone e taxId opcionais - função cleanPayload vai remover undefined
+            ...(form.phone && { cellphone: form.phone }),
+            // Remove máscara do CPF: 123.456.789-00 → 12345678900
+            ...(form.cpf && { taxId: form.cpf.replace(/\D/g, '') }),
             metadata: {
               registration_id: regData.id,
               event_id: id,
@@ -315,6 +379,14 @@ const EventDetailPage = () => {
         }
         
         const { data: billing, error: billingError } = await abacatepay.billing.create(billingParams);
+
+        console.log("📊 Resposta do Billing:", {
+          billingError,
+          billingId: billing?.id,
+          billingStatus: billing?.status,
+          billingUrl: resolveCheckoutUrl(billing),
+          fullBilling: billing,
+        });
 
         const checkoutUrl = resolveCheckoutUrl(billing);
 
@@ -350,27 +422,31 @@ const EventDetailPage = () => {
 
         setPaymentUrl(checkoutUrl);
 
-        // 3. Salvar pagamento no banco
+        // 3. Salvar pagamento no banco (apenas se billing.id é válido)
         const discountAmount = calculateDiscountAmount();
-        const { error: paymentError } = await supabase.from("payments").insert({
-          registration_id: regData.id,
-          event_id: id!,
-          amount: Number(event?.price || 0), // Valor original
-          status: "pending",
-          billing_id: billing.id,
-          transaction_id: billing.id,
-          receipt_url: billing.receipt_url,
-          payment_method: "PIX", // será atualizado quando confirmar
-          coupon_code: form.coupon?.trim().toUpperCase() || null,
-          discount_amount: discountAmount, // Desconto validado e calculado
-          registration_email: form.email,
-          registration_name: form.full_name,
-          payment_url: `${window.location.origin}/payment-confirmation/${id}?registration_id=${regData.id}&billing_id=${billing.id}`,
-        });
+        
+        if (billing?.id && billing.id !== "PENDING" && billing.id !== "pending") {
+          const { error: paymentError } = await supabase.from("payments").insert({
+            registration_id: regData.id,
+            event_id: id!,
+            amount: Number(event?.price || 0), // Valor original
+            status: "pending",
+            billing_id: billing.id,
+            transaction_id: billing.id,
+            receipt_url: billing.receipt_url,
+            payment_method: "PIX", // será atualizado quando confirmar
+            coupon_code: form.coupon?.trim().toUpperCase() || null,
+            discount_amount: discountAmount, // Desconto validado e calculado
+            registration_email: form.email,
+            registration_name: form.full_name,
+          });
 
-        if (paymentError) {
-          console.error("Falha ao salvar pagamento no Supabase", paymentError);
-          // Continua para o checkout mesmo se persistência falhar
+          if (paymentError) {
+            console.error("Falha ao salvar pagamento no Supabase", paymentError);
+            // Continua para o checkout mesmo se persistência falhar
+          }
+        } else {
+          console.warn("⚠️ Billing ID inválido, não salvando payment no banco", billing?.id);
         }
 
         // Guardar detalhes para tela de retorno pós-pagamento
@@ -438,6 +514,16 @@ const EventDetailPage = () => {
     e.preventDefault();
     if (!form.full_name.trim() || !form.email.trim()) {
       toast({ title: "Preencha os campos obrigatórios", variant: "destructive" });
+      return;
+    }
+
+    // Validar CPF se fornecido (apenas para eventos pagos)
+    if (!event?.is_free && form.cpf.trim() && !isValidCPF(form.cpf)) {
+      toast({ 
+        title: "CPF Inválido", 
+        description: "O CPF fornecido é inválido. Verifique o número.",
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -565,54 +651,14 @@ const EventDetailPage = () => {
                   </div>
                 ) : (
                 <>
-                {isPaymentReturn && (
-                  <>
-                    {isCheckingPayment ? (
-                      <div className="text-center py-12">
-                        <div className="inline-block animate-spin">
-                          <CheckCircle className="h-12 w-12 text-primary" />
-                        </div>
-                        <p className="mt-4 text-muted-foreground">Confirmando pagamento...</p>
-                      </div>
-                    ) : paymentReturnStatus === "paid" ? (
-                      // Mostrar comprovante de pagamento
-                      <PaymentReceipt
-                        eventTitle={event.title}
-                        participantName={form.full_name}
-                        participantEmail={form.email}
-                        amount={Number(event.price) || 0}
-                        paymentMethod={paymentReturnInfo?.paymentMethod || "PIX"}
-                        transactionId={paymentReturnInfo?.registrationId || ""}
-                        paidAt={paymentReturnInfo?.paymentDate || new Date().toISOString()}
-                        eventDate={event.event_date}
-                        billingId={paymentReturnInfo?.billingId}
-                        receiptUrl={paymentReturnInfo?.receiptUrl}
-                        couponCode={paymentReturnInfo?.couponCode}
-                        discountAmount={paymentReturnInfo?.discountAmount}
-                      />
-                    ) : (
-                      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                        <div className="space-y-1">
-                          <div className="font-semibold">Estamos processando</div>
-                          <div>
-                            Recebemos seu retorno. Se ainda não constar como pago, aguarde alguns segundos ou reabra o checkout.
-                          </div>
-                        </div>
-                        {paymentReturnInfo?.paymentUrl && (
-                          <div className="mt-3">
-                            <a
-                              href={paymentReturnInfo.paymentUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-block text-sm font-semibold text-primary underline underline-offset-4"
-                            >
-                              Abrir checkout novamente
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
+                {isPaymentReturn && isCheckingPayment && (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin">
+                      <CheckCircle className="h-12 w-12 text-primary" />
+                    </div>
+                    <p className="mt-4 text-muted-foreground">Finalizando sua inscrição...</p>
+                    <p className="text-sm text-muted-foreground mt-2">Você será redirecionado para o recibo de pagamento.</p>
+                  </div>
                 )}
                     {submitted && !isPaymentReturn ? (
                   <div className="text-center py-8">

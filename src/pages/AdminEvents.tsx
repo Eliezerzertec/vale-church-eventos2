@@ -23,6 +23,7 @@ type EventForm = {
   is_free: boolean;
   image_url: string;
   is_active: boolean;
+  coupon_id?: string;
 };
 
 const emptyForm: EventForm = {
@@ -69,6 +70,16 @@ const AdminEvents = () => {
     },
   });
 
+  const { data: couponsResponse } = useQuery({
+    queryKey: ["coupons"],
+    queryFn: async () => {
+      const res = await fetch('/api/coupons/list');
+      const data = await res.json();
+      return data?.data || [];
+    },
+    refetchInterval: 5000,
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -81,6 +92,7 @@ const AdminEvents = () => {
         is_free: form.is_free,
         image_url: form.image_url || null,
         is_active: form.is_active,
+        coupon_id: form.coupon_id || null,
       };
       if (editId) {
         const { error } = await supabase.from("events").update(payload).eq("id", editId);
@@ -161,6 +173,7 @@ const AdminEvents = () => {
       is_free: event.is_free,
       image_url: event.image_url || "",
       is_active: event.is_active,
+      coupon_id: event.coupon_id || "",
     });
     setPreviewUrl(event.image_url || null);
     setOpen(true);
@@ -210,6 +223,21 @@ const AdminEvents = () => {
               <div>
                 <Label>Capacidade Máxima</Label>
                 <Input type="number" min="1" value={form.max_capacity} onChange={(e) => setForm({ ...form, max_capacity: e.target.value })} placeholder="Sem limite" />
+              </div>
+              <div>
+                <Label>Cupom de Desconto (Opcional)</Label>
+                <select
+                  value={form.coupon_id || ""}
+                  onChange={(e) => setForm({ ...form, coupon_id: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md bg-white"
+                >
+                  <option value="">Nenhum cupom</option>
+                  {couponsResponse?.map((coupon: any) => (
+                    <option key={coupon.id} value={coupon.id}>
+                      {coupon.code} - {coupon.discountKind === 'PERCENTAGE' ? `${coupon.discount}%` : `R$ ${(coupon.discount / 100).toFixed(2)}`}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <Label>Imagem do Evento</Label>

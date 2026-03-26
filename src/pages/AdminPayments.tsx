@@ -23,17 +23,13 @@ const AdminPayments = () => {
   const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
 
-  // Buscar pagamentos com dados das inscrições
+  // Buscar pagamentos simples (sem relacionamentos complexos)
   const { data: payments, isLoading, refetch } = useQuery({
     queryKey: ["admin-payments"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
-        .select(`
-          *,
-          event_registrations:registration_id(full_name, email, cpf),
-          events:event_id(title, event_date)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -41,10 +37,24 @@ const AdminPayments = () => {
     },
   });
 
-  // Buscar inscrições não pagas para criar cobranças
+  // Buscar inscrições para enriquecer dados dos pagamentos
+  const { data: registrations } = useQuery({
+    queryKey: ["admin-registrations-for-payments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("event_registrations")
+        .select("id, full_name, email, cpf, status, event_id, events(title, event_date)");
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Buscar inscrições confirmadas para ver status de pagamentos
   const { data: unpaidRegistrations } = useQuery({
     queryKey: ["unpaid-registrations"],
     queryFn: async () => {
+      // Buscar inscrições confirmadas com seus pagamentos
       const { data: registrations, error: regError } = await supabase
         .from("event_registrations")
         .select(`
@@ -52,10 +62,12 @@ const AdminPayments = () => {
           full_name,
           email,
           event_id,
-          events(title, event_date)
+          status,
+          events(title, event_date),
+          payments(id, status, amount)
         `)
-        .is("payment_processed", false)
-        .eq("status", "confirmed");
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: false });
 
       if (regError) throw regError;
       return registrations || [];
@@ -73,36 +85,71 @@ const AdminPayments = () => {
       const amountInCents = Math.round(amountInReais * 100);
 
       // Criar cobrança no AbacatePay
-      const { data: billing, error } = await abacatepay.billing.create({
-        amount: amountInCents,
-        description: `Inscrição - ${event.title}`,
+      const billingPayload: any = {
+        frequency: "ONE_TIME",
         methods: ["PIX", "CARD"],
+        products: [
+          {
+            name: `Inscrição - ${event.title}`,
+            quantity: 1,
+            price: amountInCents,
+          },
+        ],
+        returnUrl: `${window.location.origin}/admin/pagamentos?pagamento=ok`,
+        completionUrl: `${window.location.origin}/admin/pagamentos?pagamento=ok`,
         customer: {
           id: registration.email,
           metadata: {
-            email: registration.email,
-            name: registration.full_name,
             registration_id: registrationId,
             event_id: registration.event_id,
           },
         },
-      });
+      };
+
+      console.log("📋 Payload AdminPayments:", JSON.stringify(billingPayload, null, 2));
+
+      const { data: billing, error } = await abacatepay.billing.create(billingPayload);
 
       if (error) throw new Error(error);
 
-      // Salvar no banco de dados (compatível com schema existente)
-      const { error: dbError } = await supabase.from("payments").insert({
-        registration_id: registrationId,
-        amount: amountInReais,
-        status: "pending",
-        billing_id: billing.id,
-        event_id: registration.event_id,
-        registration_email: registration.email,
-        registration_name: registration.full_name,
-        payment_url: billing.url,
-      });
+      // Salvar no banco de dados com status "pending" inicialmente
+      const { data: insertedPayment, error: dbError } = await supabase
+        .from("payments")
+        .insert({
+          registration_id: registrationId,
+          amount: amountInReais,
+          status: "pending",
+          billing_id: billing.id,
+          event_id: registration.event_id,
+          registration_email: registration.email,
+          registration_name: registration.full_name,
+          payment_url: billing.url,
+        })
+        .select()
+        .single();
 
       if (dbError) throw dbError;
+
+      // Depois marcar como "paid" e confirmado (admin já criou, então considera como pago)
+      // Atualizar payment para "paid" e confirmar inscrição
+      const { error: updatePaymentError } = await supabase
+        .from("payments")
+        .update({ 
+          status: "paid",
+          paid_at: new Date().toISOString()
+        })
+        .eq("id", insertedPayment.id);
+
+      if (!updatePaymentError) {
+        // Confirmar inscrição também
+        await supabase
+          .from("event_registrations")
+          .update({ status: "confirmed" })
+          .eq("id", registrationId)
+          .eq("status", "pending");
+        
+        console.log("✅ Pagamento criado e confirmado (status: paid)");
+      }
 
       return billing;
     },
@@ -277,13 +324,15 @@ const AdminPayments = () => {
                   payments?.map((payment: any) => {
                     const status = statusMap[payment.status] || statusMap.pending;
                     const StatusIcon = status.icon;
-                    const reg = payment.event_registrations as any;
-                    const event = payment.events as any;
+                    
+                    // Buscar inscrição correspondente
+                    const reg = registrations?.find((r: any) => r.id === payment.registration_id);
+                    const event = reg?.events as any;
 
                     return (
                       <TableRow key={payment.id}>
                         <TableCell className="font-medium">{reg?.full_name || "N/A"}</TableCell>
-                        <TableCell className="text-sm">{reg?.email || payment.registration_email}</TableCell>
+                        <TableCell className="text-sm">{reg?.email || "N/A"}</TableCell>
                         <TableCell>{event?.title || "N/A"}</TableCell>
                         <TableCell className="font-semibold">{formatCurrency(payment.amount)}</TableCell>
                         <TableCell>

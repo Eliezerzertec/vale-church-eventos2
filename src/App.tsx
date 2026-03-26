@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
-import PaymentConfirmationPage from "./pages/PaymentConfirmationPage";
 import AboutPage from "./pages/AboutPage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./components/AdminLayout";
@@ -16,6 +15,7 @@ import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminPayments from "./pages/AdminPayments";
 import AdminProfile from "./pages/AdminProfile";
 import AdminReports from "./pages/AdminReports";
+import AdminCoupons from "./pages/AdminCoupons";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import AuditionsPage from "./pages/AuditionsPage";
@@ -35,7 +35,6 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/eventos" element={<EventsPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
-          <Route path="/payment-confirmation/:id" element={<PaymentConfirmationPage />} />
           <Route path="/sobre" element={<AboutPage />} />
           <Route path="/audicoes" element={<AuditionsPage />} />
           <Route path="/webhook" element={<WebhookMonitor />} />
@@ -45,6 +44,7 @@ const App = () => (
             <Route path="eventos" element={<AdminEvents />} />
             <Route path="inscricoes" element={<AdminRegistrations />} />
             <Route path="pagamentos" element={<AdminPayments />} />
+            <Route path="cupons" element={<AdminCoupons />} />
             <Route path="perfil" element={<AdminProfile />} />
             <Route path="configuracoes" element={<AdminPage />} />
             <Route path="relatorios" element={<AdminReports />} />

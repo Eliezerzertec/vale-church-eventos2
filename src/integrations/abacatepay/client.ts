@@ -20,11 +20,11 @@ export interface BillingCreateParams {
   completionUrl?: string;
   customer?: {
     id?: string;
+    name?: string;
+    email?: string;
+    cellphone?: string;
+    taxId?: string;
     metadata?: {
-      name?: string;
-      email?: string;
-      cellphone?: string;
-      taxId?: string;
       [key: string]: any;
     };
   };
@@ -95,26 +95,30 @@ class AbacatePay {
     body?: any
   ): Promise<AbacatePayResponse<T>> {
     try {
+      // Detectar ambiente com suporte a Hostgator
       // Em dev: usa backend local para evitar CORS
-      // Em produção: usa AbacatePay direto (hosting próprio com CORS habilitado)
-      // ✅ FIX: Usar VITE_BACKEND_URL para determinar se deve usar backend
-      const backendUrl = import.meta.env.VITE_BACKEND_URL;
-      const isDev = import.meta.env.DEV || (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"));
-      const useBackend = isDev && !!backendUrl;
+      // Em prod: usa AbacatePay direto ou via backend em produção
+      const backendUrlEnv = import.meta.env.VITE_BACKEND_URL || "";
+      const isLocalhost = typeof window !== "undefined" && (
+        window.location.hostname === "localhost" || 
+        window.location.hostname === "127.0.0.1" || 
+        window.location.hostname.includes("192.168")
+      );
+      const isDev = import.meta.env.DEV || isLocalhost;
+      const useBackend = !!backendUrlEnv; // Usar backend se configurado
       
-      console.log("🔍 Request Config:", { isDev, useBackend, backendUrl, hostname: typeof window !== "undefined" ? window.location.hostname : "SSR" });
+      console.log("🔍 AbacatePay Request Config:", { isDev, useBackend, backendUrlEnv, hostname: typeof window !== "undefined" ? window.location.hostname : "SSR" });
 
       let response: Response;
 
       if (useBackend) {
-        // Chamar via backend local (sem CORS bloqueado)
-        // Usa o mesmo hostname do browser + porta 3001 do backend
-        const backendHost = typeof window !== "undefined" ? window.location.hostname : "localhost";
-        const backendUrl = `http://${backendHost}:3001/api/payment/create`;
+        // Usar backend URL configurado (local ou produção)
+        const finalBackendUrl = backendUrlEnv.endsWith('/') ? backendUrlEnv.slice(0, -1) : backendUrlEnv;
+        const paymentUrl = `${finalBackendUrl}/api/payment/create`;
         
-        console.log("📤 AbacatePay Request (via backend):", { endpoint, bodyKeys: Object.keys(body || {}), backendUrl });
+        console.log("📤 AbacatePay Request (via backend):", { endpoint, paymentUrl });
 
-        response = await fetch(backendUrl, {
+        response = await fetch(paymentUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -122,7 +126,7 @@ class AbacatePay {
           body: JSON.stringify({ method, endpoint, body }),
         });
       } else {
-        // Chamar direto a API AbacatePay (servidor/produção com CORS permitido)
+        // Chamar direto a API AbacatePay (sem backend ou configurado para direto)
         const url = `${API_BASE}/${API_VERSION}${endpoint}`;
         console.log("📤 AbacatePay Request (direto):", { method, url, bodyKeys: Object.keys(body || {}) });
 
@@ -190,7 +194,21 @@ class AbacatePay {
 
   billing = {
     create: async (params: BillingCreateParams): Promise<AbacatePayResponse<BillingResponse>> => {
-      const payload: any = {
+      // Remove undefined values recursively to avoid API validation errors
+      const cleanPayload = (obj: any): any => {
+        if (typeof obj !== 'object' || obj === null) return obj;
+        if (Array.isArray(obj)) return obj.map(cleanPayload);
+        
+        return Object.keys(obj).reduce((acc, key) => {
+          const value = obj[key];
+          if (value !== undefined) {
+            acc[key] = cleanPayload(value);
+          }
+          return acc;
+        }, {} as any);
+      };
+
+      const originalPayload: any = {
         frequency: params.frequency || "ONE_TIME",
         methods: params.methods || ["PIX", "CARD"],
         products: params.products,
@@ -200,7 +218,9 @@ class AbacatePay {
         couponId: params.couponId,
       };
 
-      Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
+      const payload = cleanPayload(originalPayload);
+
+      console.log("📋 Cleaned Payload for AbacatePay:", JSON.stringify(payload, null, 2));
 
       return this.request<BillingResponse>("POST", "/billing/create", payload);
     },

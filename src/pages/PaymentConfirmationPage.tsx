@@ -96,22 +96,8 @@ export default function PaymentConfirmationPage() {
         if (payment1 && !payError1) {
           paymentData = payment1;
           console.log("✅ Payment encontrado por registration_id:", paymentData);
-        } else if (billingId) {
-          // Fallback: tenta por billing_id se foi fornecido
-          const { data: payment2, error: payError2 } = await supabase
-            .from("payments")
-            .select("*")
-            .eq("billing_id", billingId)
-            .single();
-          
-          if (payment2 && !payError2) {
-            paymentData = payment2;
-            console.log("✅ Payment encontrado por billing_id:", paymentData);
-          } else {
-            console.warn("⚠️ Pagamento não encontrado por billing_id:", payError2);
-          }
         } else {
-          console.warn("⚠️ Pagamento não encontrado e billing_id não foi fornecido");
+          console.warn("⚠️ Pagamento não encontrado por registration_id:", payError1);
         }
 
         // Montar info de pagamento
@@ -120,7 +106,7 @@ export default function PaymentConfirmationPage() {
         
         if (paymentData?.status === "paid" || registration.status === "confirmed") {
           determinedStatus = "paid";
-        } else if (paymentData?.status === "failed" || registration.status === "rejected") {
+        } else if (paymentData?.status === "failed" || registration.status === "cancelled") {
           determinedStatus = "failed";
         }
 
@@ -135,11 +121,11 @@ export default function PaymentConfirmationPage() {
           billingId: paymentData?.billing_id || billingId,
           paymentStatus: determinedStatus,
           paymentMethod: paymentData?.payment_method as "PIX" | "CARD" | undefined,
-          receiptUrl: paymentData?.receipt_url,
+          receiptUrl: '',
           transactionId: paymentData?.transaction_id,
-          couponCode: paymentData?.coupon_code,
-          discountAmount: paymentData?.discount_amount,
-          paidAt: paymentData?.updated_at,
+          couponCode: '',
+          discountAmount: 0,
+          paidAt: paymentData?.paid_at,
           eventTitle: event?.title || "Evento",
           participantName: registration.full_name,
           participantEmail: registration.email,
@@ -201,8 +187,7 @@ export default function PaymentConfirmationPage() {
           setPaymentInfo(prev => prev ? { 
             ...prev, 
             paymentStatus: 'paid',
-            paidAt: payment.updated_at || payment.paid_at,
-            receiptUrl: payment.receipt_url,
+            paidAt: payment.paid_at,
             transactionId: payment.transaction_id,
           } : null);
           
