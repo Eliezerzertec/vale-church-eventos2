@@ -249,7 +249,7 @@ export default function PaymentConfirmationPage() {
       console.log("🔄 Auto-refresh iniciado (a cada 3s) para status pending");
       
       const autoRefreshInterval = setInterval(() => {
-        console.log("🔄 Auto-refresh executado - Tentativa:", refreshCount + 1);
+        console.log("� Auto-refresh executado - Tentativa:", refreshCount + 1);
         setRefreshCount(prev => prev + 1);
         window.location.reload();
       }, 3000); // 3 segundos
@@ -312,15 +312,6 @@ export default function PaymentConfirmationPage() {
                 <div className="absolute bottom-32 left-20 animate-bounce text-4xl opacity-70" style={{animationDelay: "0.4s"}}>✓</div>
               </div>
 
-              {/* Cabeçalho com agradecimento */}
-              <div className="mb-8 text-center space-y-4">
-                <div className="inline-block p-4 bg-green-100 rounded-full mb-4 animate-bounce">
-                  <CheckCircle className="h-16 w-16 text-green-600" />
-                </div>
-                <h1 className="text-4xl font-bold text-green-900">Obrigado!</h1>
-                <h2 className="text-2xl font-semibold text-green-800">Seu Pagamento Foi Confirmado</h2>
-                <p className="text-lg text-green-700">Sua inscrição em <strong>{paymentInfo.eventTitle}</strong> está garantida!</p>
-              </div>
 
               {/* Comprovante de Pagamento */}
               <div className="mb-8">

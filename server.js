@@ -39,6 +39,33 @@ app.use(express.json({
   }
 }));
 
+app.get('/api/webhook/status', async (req, res) => {
+  try {
+    // Buscar últimos webhooks recebidos
+    const { data: webhooks, error } = await supabase
+      .from('webhook_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      return res.json({
+        status: 'ok',
+        message: 'Webhook endpoint ativo (webhook_logs table não configurada)',
+        webhooks: []
+      });
+    }
+
+    res.json({
+      status: 'ok',
+      message: `Recebidos ${webhooks.length} webhooks`,
+      webhooks: webhooks
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -79,13 +106,26 @@ app.post('/api/payment/create', async (req, res) => {
     // Auto-salvar payment
     const registrationId = paymentBody?.registrationId || paymentBody?.customer?.metadata?.registration_id;
     if (billingData?.id && registrationId) {
-      await supabase.from('payments').insert({
-        registration_id: registrationId,
-        billing_id: billingData.id,
-        amount: paymentBody?.amount || 0,
-        status: 'pending',
-        payment_method: 'abacatepay_pix',
-      }).catch(() => null);
+      // Buscar event_id da inscrição
+      const { data: registration } = await supabase
+        .from('event_registrations')
+        .select('event_id')
+        .eq('id', registrationId)
+        .single();
+
+      if (registration?.event_id) {
+        const { error } = await supabase.from('payments').insert({
+          registration_id: registrationId,
+          event_id: registration.event_id,
+          billing_id: billingData.id,
+          amount: paymentBody?.amount || 0,
+          status: 'pending',
+          payment_method: 'abacatepay_pix',
+        });
+        if (error) console.warn('Erro ao salvar payment:', error);
+      } else {
+        console.warn('Event ID não encontrado para a inscrição:', registrationId);
+      }
     }
 
     res.json({ error: null, data: { ...billingData, receipt_url: receiptUrl } });
@@ -240,11 +280,12 @@ app.post('/api/webhook/abacatepay', async (req, res) => {
 
     // Marcar como processado
     if (webhookId) {
-      await supabase.from('webhook_processing').insert({
+      const { error } = await supabase.from('webhook_processing').insert({
         id: webhookId,
         event: event,
         status: 'processed'
-      }).catch(() => null);
+      });
+      if (error) console.warn('Erro ao marcar webhook como processado:', error);
     }
 
     res.status(200).json({ received: true, acknowledged: true, message: 'Webhook processed' });

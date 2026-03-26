@@ -83,12 +83,9 @@ export default function PaymentConfirmationPage() {
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
               </div>
-              <h1 className="text-3xl font-bold text-green-700 mb-2">
-                ✅ Bem-vindo!
+              <h1 className="text-3xl font-bold text-green-700 mb-4">
+                ✅ Bem-vindo(a) à Vale Church Lavras! 🙏
               </h1>
-              <p className="text-xl text-slate-700 mb-4">
-                Bem-vindo(a) à Vale Church Lavras! 🙏
-              </p>
               <p className="text-slate-600 mb-6">
                 Sua inscrição foi confirmada com sucesso. Você receberá um email de confirmação em breve.
               </p>
