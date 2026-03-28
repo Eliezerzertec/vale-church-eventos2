@@ -4,6 +4,7 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+<<<<<<< HEAD
 
 /**
  * Valida CPF brasileiro pelo algoritmo de dígito verificador
@@ -37,3 +38,5 @@ export function isValidCPF(cpf: string): boolean {
   // Compara com os dígitos informados
   return digit1 === parseInt(cleanCPF[9]) && digit2 === parseInt(cleanCPF[10]);
 }
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658

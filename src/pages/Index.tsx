@@ -46,7 +46,7 @@ const Index = () => {
           
           
           <h1 className="font-display text-5xl md:text-7xl font-bold text-secondary-foreground mb-6 leading-tight">
-            
+            <span className="block text-white">ELIEZER</span>
             <span className="block text-primary">Lavras</span>
           </h1><p className="text-primary tracking-[0.3em] uppercase text-sm font-medium mb-4">
             Somos Movidos Por Amor

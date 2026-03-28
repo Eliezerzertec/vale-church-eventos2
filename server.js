@@ -32,6 +32,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !ABACATEPAY_KEY || !WEBHOOK_SECRET) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const isProd = ABACATEPAY_KEY.startsWith('abc_prod');
 
+<<<<<<< HEAD
 // ===== CORS Configuration =====
 const corsOptions = {
   origin: ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081', 'http://127.0.0.1', 'http://69.6.212.241', process.env.VITE_FRONTEND_URL || '*'].filter(Boolean),
@@ -83,12 +84,16 @@ async function logApiTransaction(data) {
 }
 
 app.use(cors(corsOptions));
+=======
+app.use(cors());
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 app.use(express.json({
   verify: (req, res, buf, encoding) => {
     req.rawBody = buf.toString(encoding);
   }
 }));
 
+<<<<<<< HEAD
 app.get('/api/webhook/status', async (req, res) => {
   try {
     // Buscar últimos webhooks recebidos
@@ -116,6 +121,8 @@ app.get('/api/webhook/status', async (req, res) => {
   }
 });
 
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -124,6 +131,7 @@ app.get('/health', (req, res) => {
   });
 });
 
+<<<<<<< HEAD
 // Endpoint de teste para debug do AbacatePay
 app.post('/api/test/billing', async (req, res) => {
   try {
@@ -259,11 +267,25 @@ app.post('/api/payment/create', async (req, res) => {
     // Medir tempo de resposta
     const requestStartTime = Date.now();
     const response = await fetch(url, {
+=======
+
+app.post('/api/payment/create', async (req, res) => {
+  const { method = 'POST', endpoint = '/billing/create', body: paymentBody } = req.body;
+
+  if (!paymentBody) {
+    return res.status(400).json({ error: 'Body obrigatório', data: null });
+  }
+
+  try {
+    const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
+    const response = await fetch(`${ABACATEPAY_API}${endpoint}`, {
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       method,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${ABACATEPAY_KEY}`,
       },
+<<<<<<< HEAD
       body: paymentBody ? JSON.stringify(paymentBody) : undefined,
     });
     const responseDurationMs = Date.now() - requestStartTime;
@@ -295,11 +317,22 @@ app.post('/api/payment/create', async (req, res) => {
       console.error(`\n❌ AbacatePay ERROR: ${errorMsg}`);
       console.log(`🔗 Transaction ID: ${transactionId}`);
       return res.status(responseStatus).json({ error: errorMsg, data: null, transactionId });
+=======
+      body: JSON.stringify(paymentBody),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      const errorMsg = responseData?.error?.message || `HTTP ${response.status}`;
+      return res.status(response.status).json({ error: errorMsg, data: null });
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
     }
 
     const billingData = responseData?.data || responseData;
     const receiptUrl = billingData?.id ? `https://app.abacatepay.com/receipt/${billingData.id}` : null;
 
+<<<<<<< HEAD
     console.log(`\n✅ Sucesso!`);
     console.log(`   Billing ID: ${billingData?.id}`);
     console.log(`   URL: ${billingData?.url}`);
@@ -362,6 +395,23 @@ app.post('/api/payment/create', async (req, res) => {
 
     console.log('========================================\n');
     res.status(500).json({ error: error.message, data: null, transactionId });
+=======
+    // Auto-salvar payment
+    const registrationId = paymentBody?.registrationId || paymentBody?.customer?.metadata?.registration_id;
+    if (billingData?.id && registrationId) {
+      await supabase.from('payments').insert({
+        registration_id: registrationId,
+        billing_id: billingData.id,
+        amount: paymentBody?.amount || 0,
+        status: 'pending',
+        payment_method: 'abacatepay_pix',
+      }).catch(() => null);
+    }
+
+    res.json({ error: null, data: { ...billingData, receipt_url: receiptUrl } });
+  } catch (error) {
+    res.status(500).json({ error: error.message, data: null });
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
   }
 });
 
@@ -381,6 +431,7 @@ app.get('/api/payment/:id', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // Endpoint para confirmar uma inscrição quando pagamento é marcado como "paid"
 app.post('/api/payment/:paymentId/confirm', async (req, res) => {
   try {
@@ -426,6 +477,8 @@ app.post('/api/payment/:paymentId/confirm', async (req, res) => {
   }
 });
 
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 app.get('/api/coupons/list', async (req, res) => {
   try {
     const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
@@ -433,6 +486,7 @@ app.get('/api/coupons/list', async (req, res) => {
       headers: { 'Authorization': `Bearer ${ABACATEPAY_KEY}` },
     });
     const responseData = await response.json();
+<<<<<<< HEAD
     
     if (!response.ok) {
       return res.json({
@@ -458,12 +512,18 @@ app.get('/api/coupons/list', async (req, res) => {
     res.json({
       error: null,
       data: cupons
+=======
+    res.json({
+      error: !response.ok ? responseData?.error : null,
+      data: response.ok ? (responseData?.data || []) : []
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
     });
   } catch (error) {
     res.status(500).json({ error: error.message, data: [] });
   }
 });
 
+<<<<<<< HEAD
 app.post('/api/coupon/create', async (req, res) => {
   const { code, notes, discountKind, discount, maxRedeems } = req.body;
   
@@ -609,6 +669,8 @@ app.delete('/api/coupon/:id', async (req, res) => {
   }
 });
 
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 app.get('/api/coupon/validate/:code', async (req, res) => {
   const { code } = req.params;
   try {
@@ -652,6 +714,7 @@ function verifyWebhookSignature(rawBody, signatureFromHeader, secret) {
   }
 }
 
+<<<<<<< HEAD
 // Endpoint para confirmar TODOS os pagamentos pendentes (admin/debug)
 app.post('/api/admin/confirm-all-payments', async (req, res) => {
   try {
@@ -1006,6 +1069,94 @@ app.get('/api/export/events-list', async (req, res) => {
 // 4. Confirma também a inscrição (event_registrations)
 // Sem dependência de webhook!
 
+=======
+app.post('/api/webhook/abacatepay', async (req, res) => {
+  const rawBody = req.rawBody || '';
+
+  try {
+    // Validar secret
+    const secretHeader = req.headers['x-webhook-secret'];
+    if (secretHeader !== WEBHOOK_SECRET) {
+      console.warn('⚠️ Secret inválido');
+      return res.status(200).json({ received: true, acknowledged: true, message: 'Invalid secret' });
+    }
+
+    // Validar HMAC
+    const signatureHeader = req.headers['x-webhook-signature'];
+    if (signatureHeader && !verifyWebhookSignature(rawBody, signatureHeader, WEBHOOK_SECRET)) {
+      console.warn('⚠️ HMAC signature inválida');
+      return res.status(200).json({ received: true, acknowledged: true, message: 'Invalid signature' });
+    }
+
+    // Parse JSON
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return res.status(200).json({ received: true, acknowledged: true, error: 'Invalid JSON' });
+    }
+
+    const { id: webhookId, event, data, devMode } = body;
+
+    // Ignorar testes em produção
+    if (devMode === true && isProd) {
+      console.log('🟡 Dev webhook ignorado em produção');
+      return res.status(200).json({ received: true, acknowledged: true, message: 'Dev webhook ignored' });
+    }
+
+    // Idempotência
+    if (webhookId) {
+      const { data: existing } = await supabase
+        .from('webhook_processing')
+        .select('id')
+        .eq('id', webhookId)
+        .maybeSingle();
+
+      if (existing) {
+        return res.status(200).json({ received: true, acknowledged: true, message: 'Already processed' });
+      }
+    }
+
+    // Validar payload
+    if (!data?.billing?.id) {
+      return res.status(200).json({ received: true, acknowledged: true, error: 'Invalid payload' });
+    }
+
+    const { id: billingId, status } = data.billing;
+
+    // Confirmar inscrição se PAID
+    if (status === 'PAID') {
+      const { data: payment } = await supabase
+        .from('payments')
+        .select('id, registration_id')
+        .eq('billing_id', billingId)
+        .single();
+
+      if (payment?.id) {
+        await supabase.from('payments').update({ status: 'confirmed' }).eq('id', payment.id);
+        await supabase.from('event_registrations').update({ status: 'confirmed' }).eq('id', payment.registration_id);
+        console.log(`✅ Inscrição #${payment.registration_id} confirmada`);
+      }
+    }
+
+    // Marcar como processado
+    if (webhookId) {
+      await supabase.from('webhook_processing').insert({
+        id: webhookId,
+        event: event,
+        status: 'processed'
+      }).catch(() => null);
+    }
+
+    res.status(200).json({ received: true, acknowledged: true, message: 'Webhook processed' });
+
+  } catch (error) {
+    console.error('❌ Webhook error:', error.message);
+    res.status(200).json({ received: true, acknowledged: true, error: error.message });
+  }
+});
+
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 app.listen(PORT, () => {
   console.log(`✅ Backend rodando em http://localhost:${PORT}`);
   console.log(`📌 Modo: ${isProd ? '🔴 PRODUÇÃO' : '🟢 DESENVOLVIMENTO'}`);

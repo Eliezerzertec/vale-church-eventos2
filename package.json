@@ -67,7 +67,10 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
+<<<<<<< HEAD
     "xlsx": "^0.18.5",
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
     "zod": "^3.25.76"
   },
   "devDependencies": {

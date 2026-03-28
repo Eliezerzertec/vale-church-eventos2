@@ -23,13 +23,25 @@ const AdminPayments = () => {
   const { toast } = useToast();
   const [copied, setCopied] = useState<string | null>(null);
 
+<<<<<<< HEAD
   // Buscar pagamentos simples (sem relacionamentos complexos)
+=======
+  // Buscar pagamentos com dados das inscrições
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
   const { data: payments, isLoading, refetch } = useQuery({
     queryKey: ["admin-payments"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payments")
+<<<<<<< HEAD
         .select("*")
+=======
+        .select(`
+          *,
+          event_registrations:registration_id(full_name, email, cpf),
+          events:event_id(title, event_date)
+        `)
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -37,6 +49,7 @@ const AdminPayments = () => {
     },
   });
 
+<<<<<<< HEAD
   // Buscar inscrições para enriquecer dados dos pagamentos
   const { data: registrations } = useQuery({
     queryKey: ["admin-registrations-for-payments"],
@@ -55,6 +68,12 @@ const AdminPayments = () => {
     queryKey: ["unpaid-registrations"],
     queryFn: async () => {
       // Buscar inscrições confirmadas com seus pagamentos
+=======
+  // Buscar inscrições não pagas para criar cobranças
+  const { data: unpaidRegistrations } = useQuery({
+    queryKey: ["unpaid-registrations"],
+    queryFn: async () => {
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       const { data: registrations, error: regError } = await supabase
         .from("event_registrations")
         .select(`
@@ -62,12 +81,19 @@ const AdminPayments = () => {
           full_name,
           email,
           event_id,
+<<<<<<< HEAD
           status,
           events(title, event_date),
           payments(id, status, amount)
         `)
         .eq("status", "confirmed")
         .order("created_at", { ascending: false });
+=======
+          events(title, event_date)
+        `)
+        .is("payment_processed", false)
+        .eq("status", "confirmed");
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 
       if (regError) throw regError;
       return registrations || [];
@@ -85,6 +111,7 @@ const AdminPayments = () => {
       const amountInCents = Math.round(amountInReais * 100);
 
       // Criar cobrança no AbacatePay
+<<<<<<< HEAD
       const billingPayload: any = {
         frequency: "ONE_TIME",
         methods: ["PIX", "CARD"],
@@ -100,10 +127,22 @@ const AdminPayments = () => {
         customer: {
           id: registration.email,
           metadata: {
+=======
+      const { data: billing, error } = await abacatepay.billing.create({
+        amount: amountInCents,
+        description: `Inscrição - ${event.title}`,
+        methods: ["PIX", "CARD"],
+        customer: {
+          id: registration.email,
+          metadata: {
+            email: registration.email,
+            name: registration.full_name,
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
             registration_id: registrationId,
             event_id: registration.event_id,
           },
         },
+<<<<<<< HEAD
       };
 
       console.log("📋 Payload AdminPayments:", JSON.stringify(billingPayload, null, 2));
@@ -151,6 +190,26 @@ const AdminPayments = () => {
         console.log("✅ Pagamento criado e confirmado (status: paid)");
       }
 
+=======
+      });
+
+      if (error) throw new Error(error);
+
+      // Salvar no banco de dados (compatível com schema existente)
+      const { error: dbError } = await supabase.from("payments").insert({
+        registration_id: registrationId,
+        amount: amountInReais,
+        status: "pending",
+        billing_id: billing.id,
+        event_id: registration.event_id,
+        registration_email: registration.email,
+        registration_name: registration.full_name,
+        payment_url: billing.url,
+      });
+
+      if (dbError) throw dbError;
+
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       return billing;
     },
     onSuccess: (billing) => {
@@ -324,15 +383,24 @@ const AdminPayments = () => {
                   payments?.map((payment: any) => {
                     const status = statusMap[payment.status] || statusMap.pending;
                     const StatusIcon = status.icon;
+<<<<<<< HEAD
                     
                     // Buscar inscrição correspondente
                     const reg = registrations?.find((r: any) => r.id === payment.registration_id);
                     const event = reg?.events as any;
+=======
+                    const reg = payment.event_registrations as any;
+                    const event = payment.events as any;
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 
                     return (
                       <TableRow key={payment.id}>
                         <TableCell className="font-medium">{reg?.full_name || "N/A"}</TableCell>
+<<<<<<< HEAD
                         <TableCell className="text-sm">{reg?.email || "N/A"}</TableCell>
+=======
+                        <TableCell className="text-sm">{reg?.email || payment.registration_email}</TableCell>
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
                         <TableCell>{event?.title || "N/A"}</TableCell>
                         <TableCell className="font-semibold">{formatCurrency(payment.amount)}</TableCell>
                         <TableCell>

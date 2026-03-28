@@ -96,8 +96,27 @@ export default function PaymentConfirmationPage() {
         if (payment1 && !payError1) {
           paymentData = payment1;
           console.log("✅ Payment encontrado por registration_id:", paymentData);
+<<<<<<< HEAD
         } else {
           console.warn("⚠️ Pagamento não encontrado por registration_id:", payError1);
+=======
+        } else if (billingId) {
+          // Fallback: tenta por billing_id se foi fornecido
+          const { data: payment2, error: payError2 } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("billing_id", billingId)
+            .single();
+          
+          if (payment2 && !payError2) {
+            paymentData = payment2;
+            console.log("✅ Payment encontrado por billing_id:", paymentData);
+          } else {
+            console.warn("⚠️ Pagamento não encontrado por billing_id:", payError2);
+          }
+        } else {
+          console.warn("⚠️ Pagamento não encontrado e billing_id não foi fornecido");
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
         }
 
         // Montar info de pagamento
@@ -106,7 +125,11 @@ export default function PaymentConfirmationPage() {
         
         if (paymentData?.status === "paid" || registration.status === "confirmed") {
           determinedStatus = "paid";
+<<<<<<< HEAD
         } else if (paymentData?.status === "failed" || registration.status === "cancelled") {
+=======
+        } else if (paymentData?.status === "failed" || registration.status === "rejected") {
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
           determinedStatus = "failed";
         }
 
@@ -121,11 +144,19 @@ export default function PaymentConfirmationPage() {
           billingId: paymentData?.billing_id || billingId,
           paymentStatus: determinedStatus,
           paymentMethod: paymentData?.payment_method as "PIX" | "CARD" | undefined,
+<<<<<<< HEAD
           receiptUrl: '',
           transactionId: paymentData?.transaction_id,
           couponCode: '',
           discountAmount: 0,
           paidAt: paymentData?.paid_at,
+=======
+          receiptUrl: paymentData?.receipt_url,
+          transactionId: paymentData?.transaction_id,
+          couponCode: paymentData?.coupon_code,
+          discountAmount: paymentData?.discount_amount,
+          paidAt: paymentData?.updated_at,
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
           eventTitle: event?.title || "Evento",
           participantName: registration.full_name,
           participantEmail: registration.email,
@@ -187,7 +218,12 @@ export default function PaymentConfirmationPage() {
           setPaymentInfo(prev => prev ? { 
             ...prev, 
             paymentStatus: 'paid',
+<<<<<<< HEAD
             paidAt: payment.paid_at,
+=======
+            paidAt: payment.updated_at || payment.paid_at,
+            receiptUrl: payment.receipt_url,
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
             transactionId: payment.transaction_id,
           } : null);
           
@@ -234,7 +270,11 @@ export default function PaymentConfirmationPage() {
       console.log("🔄 Auto-refresh iniciado (a cada 3s) para status pending");
       
       const autoRefreshInterval = setInterval(() => {
+<<<<<<< HEAD
         console.log("� Auto-refresh executado - Tentativa:", refreshCount + 1);
+=======
+        console.log("🔄 Auto-refresh executado - Tentativa:", refreshCount + 1);
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
         setRefreshCount(prev => prev + 1);
         window.location.reload();
       }, 3000); // 3 segundos
@@ -297,6 +337,18 @@ export default function PaymentConfirmationPage() {
                 <div className="absolute bottom-32 left-20 animate-bounce text-4xl opacity-70" style={{animationDelay: "0.4s"}}>✓</div>
               </div>
 
+<<<<<<< HEAD
+=======
+              {/* Cabeçalho com agradecimento */}
+              <div className="mb-8 text-center space-y-4">
+                <div className="inline-block p-4 bg-green-100 rounded-full mb-4 animate-bounce">
+                  <CheckCircle className="h-16 w-16 text-green-600" />
+                </div>
+                <h1 className="text-4xl font-bold text-green-900">Obrigado!</h1>
+                <h2 className="text-2xl font-semibold text-green-800">Seu Pagamento Foi Confirmado</h2>
+                <p className="text-lg text-green-700">Sua inscrição em <strong>{paymentInfo.eventTitle}</strong> está garantida!</p>
+              </div>
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 
               {/* Comprovante de Pagamento */}
               <div className="mb-8">

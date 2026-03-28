@@ -23,7 +23,10 @@ type EventForm = {
   is_free: boolean;
   image_url: string;
   is_active: boolean;
+<<<<<<< HEAD
   coupon_id?: string;
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 };
 
 const emptyForm: EventForm = {
@@ -70,6 +73,7 @@ const AdminEvents = () => {
     },
   });
 
+<<<<<<< HEAD
   const { data: couponsResponse } = useQuery({
     queryKey: ["coupons"],
     queryFn: async () => {
@@ -80,6 +84,8 @@ const AdminEvents = () => {
     refetchInterval: 5000,
   });
 
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -92,7 +98,10 @@ const AdminEvents = () => {
         is_free: form.is_free,
         image_url: form.image_url || null,
         is_active: form.is_active,
+<<<<<<< HEAD
         coupon_id: form.coupon_id || null,
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       };
       if (editId) {
         const { error } = await supabase.from("events").update(payload).eq("id", editId);
@@ -173,7 +182,10 @@ const AdminEvents = () => {
       is_free: event.is_free,
       image_url: event.image_url || "",
       is_active: event.is_active,
+<<<<<<< HEAD
       coupon_id: event.coupon_id || "",
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
     });
     setPreviewUrl(event.image_url || null);
     setOpen(true);
@@ -225,6 +237,7 @@ const AdminEvents = () => {
                 <Input type="number" min="1" value={form.max_capacity} onChange={(e) => setForm({ ...form, max_capacity: e.target.value })} placeholder="Sem limite" />
               </div>
               <div>
+<<<<<<< HEAD
                 <Label>Cupom de Desconto (Opcional)</Label>
                 <select
                   value={form.coupon_id || ""}
@@ -240,6 +253,8 @@ const AdminEvents = () => {
                 </select>
               </div>
               <div>
+=======
+>>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
                 <Label>Imagem do Evento</Label>
                 {(previewUrl || form.image_url) && (
                   <div className="relative mb-2 w-full h-32 rounded-lg overflow-hidden border border-border">
