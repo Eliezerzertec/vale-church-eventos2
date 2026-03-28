@@ -41,11 +41,7 @@ export default function PaymentConfirmationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
-<<<<<<< HEAD
-      <Navbar />
-=======
-      <Navbar transparent={false} />
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+<Navbar />
 
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -87,18 +83,9 @@ export default function PaymentConfirmationPage() {
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
               </div>
-<<<<<<< HEAD
-              <h1 className="text-3xl font-bold text-green-700 mb-4">
+<h1 className="text-3xl font-bold text-green-700 mb-4">
                 ✅ Bem-vindo(a) à Vale Church Lavras! 🙏
               </h1>
-=======
-              <h1 className="text-3xl font-bold text-green-700 mb-2">
-                ✅ Bem-vindo!
-              </h1>
-              <p className="text-xl text-slate-700 mb-4">
-                Bem-vindo(a) à Vale Church Lavras! 🙏
-              </p>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
               <p className="text-slate-600 mb-6">
                 Sua inscrição foi confirmada com sucesso. Você receberá um email de confirmação em breve.
               </p>
@@ -126,3 +113,4 @@ export default function PaymentConfirmationPage() {
     </div>
   );
 }
+

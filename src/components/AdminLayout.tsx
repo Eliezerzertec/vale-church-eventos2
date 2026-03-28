@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-<<<<<<< HEAD
 import { LayoutDashboard, Calendar, Users, CreditCard, FileText, LogOut, UserCircle, Music2, Settings, Menu, X, Gift } from "lucide-react";
-=======
-import { LayoutDashboard, Calendar, Users, CreditCard, FileText, LogOut, UserCircle, Music2, Settings } from "lucide-react";
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 import logo from "@/assets/logo-vale.png";
 import { Button } from "@/components/ui/button";
 
@@ -14,10 +10,7 @@ const AdminLayout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-<<<<<<< HEAD
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -75,8 +68,7 @@ const AdminLayout = () => {
   if (!isAdmin) return null;
 
   const navItems = [
-<<<<<<< HEAD
-    { 
+{ 
       category: "VISÃO GERAL",
       items: [
         { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -145,40 +137,6 @@ const AdminLayout = () => {
       `}>
         <div className="hidden md:block p-4 border-b border-border/30 space-y-3">
           {/* Logo/Brand - Desktop */}
-=======
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/eventos", label: "Eventos", icon: Calendar },
-    { href: "/admin/inscricoes", label: "Inscrições", icon: Users },
-    { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
-    { href: "/admin/relatorios", label: "Relatórios", icon: FileText },
-    { href: "/admin/audicoes", label: "Audições", icon: Music2 },
-    { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-secondary border-r border-border/50 flex flex-col shrink-0">
-        <div className="p-4 border-b border-border/30 space-y-3">
-          {/* Avatar e Info do Usuário */}
-          <Link to="/admin/perfil" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="w-12 h-12 rounded-lg bg-muted border border-border overflow-hidden flex items-center justify-center flex-shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={user?.email} className="w-full h-full object-cover" />
-              ) : (
-                <UserCircle className="h-6 w-6 text-primary" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-secondary-foreground truncate">
-                {user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Admin"}
-              </p>
-              <p className="text-xs text-secondary-foreground/60 truncate">{user?.email}</p>
-            </div>
-          </Link>
-
-          {/* Logo/Brand */}
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
           <Link to="/" className="flex items-center gap-2">
             <img src={logo} alt="Vale Church Lavras" className="h-8 w-8 rounded-full object-cover" />
             <div>
@@ -188,8 +146,7 @@ const AdminLayout = () => {
           </Link>
         </div>
 
-<<<<<<< HEAD
-        <nav className="flex-1 p-3 overflow-y-auto">
+<nav className="flex-1 p-3 overflow-y-auto">
           {navItems.map((group) => (
             <div key={group.category} className="mb-6">
               <div className="px-3 py-2 mb-2">
@@ -237,48 +194,13 @@ const AdminLayout = () => {
             className="w-full justify-start text-secondary-foreground/60 hover:text-destructive hover:bg-red-50 text-sm h-10"
           >
             <LogOut className="mr-3 h-4 w-4 flex-shrink-0" />
-=======
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-secondary-foreground/70 hover:bg-secondary-foreground/5 hover:text-secondary-foreground"
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-3 border-t border-border/30 space-y-2">
-          <Link to="/admin/perfil">
-            <Button variant="ghost" className="w-full justify-start text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/5">
-              <UserCircle className="mr-2 h-4 w-4" />
-              Meu Perfil
-            </Button>
-          </Link>
-          <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-secondary-foreground/60 hover:text-destructive">
-            <LogOut className="mr-2 h-4 w-4" />
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
             Sair
           </Button>
         </div>
       </aside>
 
       {/* Main */}
-<<<<<<< HEAD
-      <main className="flex-1 overflow-auto w-full">
-=======
-      <main className="flex-1 overflow-auto">
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+<main className="flex-1 overflow-auto w-full">
         <Outlet />
       </main>
     </div>
@@ -286,3 +208,4 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
+

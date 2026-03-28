@@ -1,21 +1,25 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Heart, Users, BookOpen, Globe } from "lucide-react";
+import heroImage from "@/assets/hero-church.jpg";
 
 const AboutPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="pt-24 pb-8 bg-secondary">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-primary tracking-widest uppercase text-xs font-semibold mb-2">Conheça</p>
-          <h1 className="font-display text-4xl font-bold text-secondary-foreground mb-4">Sobre Nós</h1>
-          <p className="text-secondary-foreground/70 max-w-xl mx-auto">
+      {/* Hero - igual ao Início */}
+      <section className="relative h-[60vh] flex items-center justify-center overflow-hidden">
+        <img src={heroImage} alt="Vale Church" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 gradient-hero" />
+        <div className="relative z-10 text-center px-4 animate-fade-in bg-black/20 backdrop-blur-sm rounded-2xl py-10 px-8 max-w-xl mx-auto">
+          <p className="text-primary tracking-[0.3em] uppercase text-xs font-semibold mb-4">Conheça</p>
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">Sobre Nós</h1>
+          <p className="text-white/80 max-w-md mx-auto font-light">
             Somos Movidos Por Amor. Uma igreja comprometida com a Palavra, oração, adoração, comunhão, unidade, discipulado e amor.
           </p>
         </div>
-      </div>
+      </section>
 
       <div className="container mx-auto px-4 py-16 max-w-3xl">
         <div className="prose prose-lg text-foreground/80 mx-auto">

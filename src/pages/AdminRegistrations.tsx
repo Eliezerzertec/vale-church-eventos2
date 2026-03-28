@@ -9,16 +9,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-<<<<<<< HEAD
 import { Search, Edit2, Trash2, FileCheck, ExternalLink, Download, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import * as XLSX from "xlsx";
-=======
-import { Search, Edit2, Trash2 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 
 const statusMap: Record<string, { label: string; className: string }> = {
   pending: { label: "Pendente", className: "bg-yellow-100 text-yellow-700" },
@@ -36,10 +30,7 @@ interface Registration {
   created_at: string;
   event_id: string;
   events: any;
-<<<<<<< HEAD
-  payments?: any[];
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+payments?: any[];
 }
 
 const AdminRegistrations = () => {
@@ -47,13 +38,9 @@ const AdminRegistrations = () => {
   const [search, setSearch] = useState("");
   const [editingReg, setEditingReg] = useState<Registration | null>(null);
   const [deletingRegId, setDeletingRegId] = useState<string | null>(null);
-<<<<<<< HEAD
-  const [receiptsModal, setReceiptsModal] = useState<Registration | null>(null);
+const [receiptsModal, setReceiptsModal] = useState<Registration | null>(null);
   const [editForm, setEditForm] = useState({ full_name: "", email: "", phone: "", status: "" });
   const [isExporting, setIsExporting] = useState(false);
-=======
-  const [editForm, setEditForm] = useState({ full_name: "", email: "", phone: "", status: "" });
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
   const { toast } = useToast();
 
   const { data: registrations, isLoading, refetch } = useQuery({
@@ -61,11 +48,7 @@ const AdminRegistrations = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("event_registrations")
-<<<<<<< HEAD
-        .select("*, events(title), payments(id, status, receipt_url, amount)")
-=======
-        .select("*, events(title)")
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+.select("*, events(title), payments(id, status, receipt_url, amount)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Registration[];
@@ -196,8 +179,7 @@ const AdminRegistrations = () => {
     }
   };
 
-<<<<<<< HEAD
-  const handleExportExcel = async () => {
+const handleExportExcel = async () => {
     try {
       setIsExporting(true);
 
@@ -350,23 +332,12 @@ const AdminRegistrations = () => {
 
       <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
-=======
-  const colSpan = 7;
-
-  return (
-    <div className="p-6">
-      <h1 className="font-display text-2xl font-bold text-foreground mb-6">Inscrições</h1>
-
-      <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative max-w-sm w-full">
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por evento, nome ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-<<<<<<< HEAD
-            className="pl-9 text-sm"
+className="pl-9 text-sm"
           />
         </div>
         <div className="flex flex-col gap-3 w-full md:w-auto md:flex-row md:items-center">
@@ -424,30 +395,11 @@ const AdminRegistrations = () => {
               )}
             </Button>
           </div>
-=======
-            className="pl-9"
-          />
-        </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <Label className="whitespace-nowrap text-sm text-muted-foreground">Filtrar por evento</Label>
-          <Select value={eventFilter} onValueChange={(v) => setEventFilter(v)}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Todos os eventos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              {events?.map((ev: any) => (
-                <SelectItem key={ev.id} value={ev.id}>{ev.title}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
         </div>
       </div>
 
       <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
-<<<<<<< HEAD
-        {/* Tabela para desktop */}
+{/* Tabela para desktop */}
         <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
@@ -589,64 +541,6 @@ const AdminRegistrations = () => {
             </div>
           )}
         </div>
-=======
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Celular</TableHead>
-              <TableHead>Evento</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={colSpan} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={colSpan} className="text-center py-8 text-muted-foreground">Nenhuma inscrição encontrada.</TableCell></TableRow>
-            ) : (
-              filtered.map((reg) => {
-                const s = statusMap[reg.status] || statusMap.pending;
-                return (
-                  <TableRow key={reg.id}>
-                    <TableCell className="font-medium">{reg.full_name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{reg.email}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{reg.phone || "-"}</TableCell>
-                    <TableCell className="text-sm">{(reg.events as any)?.title || "-"}</TableCell>
-                    <TableCell>
-                      <span className={`text-xs px-2 py-1 rounded-full ${s.className}`}>{s.label}</span>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(new Date(reg.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditClick(reg)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteClick(reg.id)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       </div>
 
       {/* Dialog de Edição */}
@@ -704,8 +598,7 @@ const AdminRegistrations = () => {
         </DialogContent>
       </Dialog>
 
-<<<<<<< HEAD
-      {/* Dialog de Comprovantes */}
+{/* Dialog de Comprovantes */}
       <Dialog open={!!receiptsModal} onOpenChange={(open) => !open && setReceiptsModal(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
@@ -757,9 +650,6 @@ const AdminRegistrations = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       {/* AlertDialog de Confirmação de Deleção */}
       <AlertDialog open={!!deletingRegId} onOpenChange={(open) => !open && setDeletingRegId(null)}>
         <AlertDialogContent>
@@ -786,3 +676,4 @@ const AdminRegistrations = () => {
 };
 
 export default AdminRegistrations;
+

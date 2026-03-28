@@ -40,13 +40,9 @@ export default function AdminPage() {
 
   const checkBackendStatus = async () => {
     try {
-<<<<<<< HEAD
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
       const healthUrl = backendUrl.endsWith('/') ? `${backendUrl}health` : `${backendUrl}/health`;
       const response = await fetch(healthUrl);
-=======
-      const response = await fetch("http://localhost:3001/health");
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
       const data = await response.json();
       
       if (response.ok) {
@@ -284,11 +280,7 @@ export default function AdminPage() {
             </div>
             <div className="flex justify-between py-2 border-b border-slate-200">
               <span className="text-slate-600">Backend URL:</span>
-<<<<<<< HEAD
-              <span className="font-mono bg-slate-100 px-2 py-1 rounded">{import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"}</span>
-=======
-              <span className="font-mono bg-slate-100 px-2 py-1 rounded">http://localhost:3001</span>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+<span className="font-mono bg-slate-100 px-2 py-1 rounded">{import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-slate-200">
               <span className="text-slate-600">Modo Selecionado:</span>
@@ -317,3 +309,4 @@ export default function AdminPage() {
     </div>
   );
 }
+

@@ -6,10 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
-<<<<<<< HEAD
-=======
-import PaymentConfirmationPage from "./pages/PaymentConfirmationPage";
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+
 import AboutPage from "./pages/AboutPage";
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./components/AdminLayout";
@@ -19,10 +16,7 @@ import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminPayments from "./pages/AdminPayments";
 import AdminProfile from "./pages/AdminProfile";
 import AdminReports from "./pages/AdminReports";
-<<<<<<< HEAD
 import AdminCoupons from "./pages/AdminCoupons";
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import AuditionsPage from "./pages/AuditionsPage";
@@ -42,10 +36,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/eventos" element={<EventsPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
-<<<<<<< HEAD
-=======
-          <Route path="/payment-confirmation/:id" element={<PaymentConfirmationPage />} />
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+
           <Route path="/sobre" element={<AboutPage />} />
           <Route path="/audicoes" element={<AuditionsPage />} />
           <Route path="/webhook" element={<WebhookMonitor />} />
@@ -55,10 +46,7 @@ const App = () => (
             <Route path="eventos" element={<AdminEvents />} />
             <Route path="inscricoes" element={<AdminRegistrations />} />
             <Route path="pagamentos" element={<AdminPayments />} />
-<<<<<<< HEAD
-            <Route path="cupons" element={<AdminCoupons />} />
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+<Route path="cupons" element={<AdminCoupons />} />
             <Route path="perfil" element={<AdminProfile />} />
             <Route path="configuracoes" element={<AdminPage />} />
             <Route path="relatorios" element={<AdminReports />} />
@@ -72,3 +60,4 @@ const App = () => (
 );
 
 export default App;
+

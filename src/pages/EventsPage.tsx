@@ -9,6 +9,7 @@ import Footer from "@/components/Footer";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useState } from "react";
+import heroImage from "@/assets/hero-church.jpg";
 
 const EventsPage = () => {
   const [search, setSearch] = useState("");
@@ -36,24 +37,27 @@ const EventsPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="pt-24 pb-8 bg-secondary">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-primary tracking-widest uppercase text-xs font-semibold mb-2">Agenda</p>
-          <h1 className="font-display text-4xl font-bold text-secondary-foreground mb-4">Nossos Eventos</h1>
-          <p className="text-secondary-foreground/70 max-w-md mx-auto mb-6">
+      {/* Hero - igual ao Início */}
+      <section className="relative h-[60vh] flex items-center justify-center overflow-hidden">
+        <img src={heroImage} alt="Vale Church" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 gradient-hero" />
+        <div className="relative z-10 text-center px-4 animate-fade-in bg-black/20 backdrop-blur-sm rounded-2xl py-8 px-8 max-w-xl mx-auto">
+          <p className="text-primary tracking-[0.3em] uppercase text-xs font-semibold mb-4">Agenda</p>
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-3 leading-tight">Nossos Eventos</h1>
+          <p className="text-white/80 max-w-md mx-auto mb-6 font-light">
             Participe dos nossos eventos e fortaleça sua caminhada de fé.
           </p>
           <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
             <Input
               placeholder="Buscar eventos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 bg-secondary-foreground/10 border-secondary-foreground/20 text-secondary-foreground placeholder:text-secondary-foreground/40"
+              className="pl-10 bg-white/15 backdrop-blur-sm border-white/30 text-white placeholder:text-white/50 focus:bg-white/20"
             />
           </div>
         </div>
-      </div>
+      </section>
 
       <div className="container mx-auto px-4 py-12">
         {isLoading ? (

@@ -7,20 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-<<<<<<< HEAD
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Music2, Headphones, Music, Users2, CalendarDays, Mic2, Guitar, Piano, Drum, Radio, Users, Zap, Heart, Handshake, Target } from "lucide-react";
 import heroImage from "@/assets/hero-church.jpg";
-=======
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Music2, Headphones, Music, Users2, CalendarDays } from "lucide-react";
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 
 const client = supabase as any;
 
@@ -59,7 +51,6 @@ const initialForm: ApplicationForm = {
   notes: "",
 };
 
-<<<<<<< HEAD
 // Função para mapear nomes de funções para ícones
 const getRoleIcon = (roleName: string) => {
   const name = roleName.toLowerCase();
@@ -92,9 +83,6 @@ const getMinistryIcon = (roles?: Role[]) => {
   
   return <Music2 className="h-5 w-5 text-primary" />; // ícone padrão
 };
-
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 const AuditionsPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -154,15 +142,9 @@ const AuditionsPage = () => {
 
   const heroStats = useMemo(
     () => [
-<<<<<<< HEAD
-      { icon: Heart, label: "Equipe dedicada", desc: "Mentorias, ensaios e feedback contínuo" },
+{ icon: Heart, label: "Equipe dedicada", desc: "Mentorias, ensaios e feedback contínuo" },
       { icon: Handshake, label: "Escalas organizadas", desc: "Cultos, quinta e eventos especiais" },
       { icon: Target, label: "Processo claro", desc: "Envio de referência, triagem e ensaio presencial" },
-=======
-      { icon: Users2, label: "Equipe dedicada", desc: "Mentorias, ensaios e feedback contínuo" },
-      { icon: CalendarDays, label: "Escalas organizadas", desc: "Cultos, quinta e eventos especiais" },
-      { icon: Headphones, label: "Processo claro", desc: "Envio de referência, triagem e ensaio presencial" },
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
     ],
     []
   );
@@ -171,14 +153,12 @@ const AuditionsPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-<<<<<<< HEAD
-      <div 
-        className="relative pt-24 pb-12 bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
-        <div className="absolute inset-0 bg-black/50"></div>
+      {/* Hero - igual ao Início */}
+      <section className="relative h-[70vh] flex items-center overflow-hidden">
+        <img src={heroImage} alt="Vale Church" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 gradient-hero" />
         
-        <div className="relative container mx-auto px-4 grid gap-8 lg:grid-cols-[1.2fr_1fr] items-center">
+        <div className="relative z-10 container mx-auto px-4 grid gap-8 lg:grid-cols-[1.2fr_1fr] items-center pt-20">
           <div className="space-y-6">
             <Badge className="bg-primary/15 text-primary border border-primary/30">Vale Music</Badge>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight">
@@ -194,36 +174,13 @@ const AuditionsPage = () => {
                   <div>
                     <p className="text-sm font-semibold text-white">{item.label}</p>
                     <p className="text-xs text-white/70">{item.desc}</p>
-=======
-      <div className="pt-24 pb-12 bg-gradient-to-br from-secondary via-background to-primary/10">
-        <div className="container mx-auto px-4 grid gap-8 lg:grid-cols-[1.2fr_1fr] items-center">
-          <div className="space-y-6">
-            <Badge className="bg-primary/15 text-primary border border-primary/30">Vale Music</Badge>
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground leading-tight">
-              Audições abertas do louvor
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              Veja os ministérios e funções disponíveis, envie seu material e participe das próximas seleções.
-            </p>
-            <div className="grid gap-3 md:grid-cols-3">
-              {heroStats.map((item) => (
-                <div key={item.label} className="rounded-lg border border-primary/15 bg-card/80 p-4 flex gap-3 items-start">
-                  <item.icon className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                    <p className="text-xs text-muted-foreground">{item.desc}</p>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-<<<<<<< HEAD
-          <Card className="shadow-soft border-border/60 bg-white/95 backdrop-blur-sm">
-=======
-          <Card className="shadow-soft border-border/60">
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+<Card className="shadow-soft border-border/60 bg-white/95 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-2xl">Como funciona</CardTitle>
               <CardDescription>Processo simples para participar das audições.</CardDescription>
@@ -238,9 +195,8 @@ const AuditionsPage = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </section>
 
-<<<<<<< HEAD
       <div className="py-12 bg-gradient-to-br from-primary/5 via-background to-secondary/5">
         <div className="container mx-auto px-4 space-y-6">
           <div className="flex items-center gap-2">
@@ -250,16 +206,6 @@ const AuditionsPage = () => {
               <h2 className="font-display text-3xl font-bold text-foreground">Vagas por ministério</h2>
             </div>
           </div>
-=======
-      <div className="container mx-auto px-4 py-12 space-y-6">
-        <div className="flex items-center gap-2">
-          <Music2 className="h-5 w-5 text-primary" />
-          <div>
-            <p className="text-primary text-xs uppercase tracking-widest font-semibold">Audições</p>
-            <h2 className="font-display text-3xl font-bold text-foreground">Vagas por ministério</h2>
-          </div>
-        </div>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -278,11 +224,7 @@ const AuditionsPage = () => {
               <Card key={ministry.id} className="border-border/70 shadow-card">
                 <CardHeader className="space-y-2">
                   <div className="flex items-center gap-2">
-<<<<<<< HEAD
-                    {getMinistryIcon(ministry.audition_roles)}
-=======
-                    <Music2 className="h-5 w-5 text-primary" />
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+{getMinistryIcon(ministry.audition_roles)}
                     <CardTitle>{ministry.name}</CardTitle>
                   </div>
                   {ministry.description && <CardDescription>{ministry.description}</CardDescription>}
@@ -297,14 +239,9 @@ const AuditionsPage = () => {
                         key={role.id}
                         className="rounded-lg border border-border/70 p-3 flex items-start justify-between gap-3"
                       >
-<<<<<<< HEAD
-                        <div className="space-y-1 flex-1">
+<div className="space-y-1 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             {getRoleIcon(role.name)}
-=======
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
                             <Badge variant="outline">{role.name}</Badge>
                             {role.slots ? (
                               <Badge variant="secondary">{role.slots} vagas</Badge>
@@ -329,17 +266,13 @@ const AuditionsPage = () => {
             ))}
           </div>
         )}
-<<<<<<< HEAD
-        </div>
-=======
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
+</div>
       </div>
 
       <Dialog open={!!selectedRole} onOpenChange={(open) => !open && setSelectedRole(null)}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-<<<<<<< HEAD
-            <DialogTitle className="text-2xl">Inscrição para {selectedRole?.name}</DialogTitle>
+<DialogTitle className="text-2xl">Inscrição para {selectedRole?.name}</DialogTitle>
             <DialogDescription className="text-base mt-2">
               Preencha o formulário abaixo com seus dados. Os campos marcados com * são obrigatórios.
             </DialogDescription>
@@ -347,19 +280,11 @@ const AuditionsPage = () => {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="full_name" className="font-semibold">Nome completo *</Label>
-=======
-            <DialogTitle>Inscrição para {selectedRole?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="grid gap-2">
-              <Label htmlFor="full_name">Nome completo *</Label>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
               <Input
                 id="full_name"
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-<<<<<<< HEAD
-                placeholder="Seu nome completo"
+placeholder="Seu nome completo"
                 required
                 className="h-10"
               />
@@ -369,21 +294,12 @@ const AuditionsPage = () => {
             <div className="grid gap-2 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="email" className="font-semibold">E-mail *</Label>
-=======
-                required
-              />
-            </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="email">E-mail *</Label>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
                 <Input
                   id="email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-<<<<<<< HEAD
-                  placeholder="seu@email.com"
+placeholder="seu@email.com"
                   required
                   className="h-10"
                 />
@@ -391,19 +307,11 @@ const AuditionsPage = () => {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="phone" className="font-semibold">Celular</Label>
-=======
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Celular</Label>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
                 <Input
                   id="phone"
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-<<<<<<< HEAD
-                  placeholder="(11) 9XXXX-XXXX"
+placeholder="(11) 9XXXX-XXXX"
                   className="h-10"
                 />
                 <p className="text-xs text-muted-foreground">Com WhatsApp se possível</p>
@@ -412,20 +320,11 @@ const AuditionsPage = () => {
 
             <div className="grid gap-2">
               <Label htmlFor="music_link" className="font-semibold">Link de referência (vídeo/áudio) - caso tenha</Label>
-=======
-                  placeholder="(xx) xxxxx-xxxx"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="music_link">Link de referência (vídeo/áudio)</Label>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
               <Input
                 id="music_link"
                 value={form.music_link}
                 onChange={(e) => setForm({ ...form, music_link: e.target.value })}
-<<<<<<< HEAD
-                placeholder="YouTube, Google Drive, Dropbox, etc"
+placeholder="YouTube, Google Drive, Dropbox, etc"
                 className="h-10"
               />
               <p className="text-xs text-muted-foreground">Envie um vídeo ou áudio curto da sua performance (opcional)</p>
@@ -433,19 +332,11 @@ const AuditionsPage = () => {
 
             <div className="grid gap-2">
               <Label htmlFor="notes" className="font-semibold">Conte um pouco da sua experiência</Label>
-=======
-                placeholder="YouTube, Drive..."
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="notes">Conte um pouco da sua experiência</Label>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
               <Textarea
                 id="notes"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-<<<<<<< HEAD
-                placeholder="Descreva sua experiência com música, tempo que participa de ministério, estilos musicais que trabalha, etc"
+placeholder="Descreva sua experiência com música, tempo que participa de ministério, estilos musicais que trabalha, etc"
                 rows={4}
                 className="resize-none"
               />
@@ -462,18 +353,6 @@ const AuditionsPage = () => {
               disabled={applyMutation.isPending || !form.full_name || !form.email}
               className="w-full sm:w-auto"
             >
-=======
-                placeholder="Breve resumo da sua jornada no louvor"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedRole(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={() => applyMutation.mutate()} disabled={applyMutation.isPending}>
->>>>>>> 3f51709dab058c5382fcc063e5888a503d8db658
               {applyMutation.isPending ? "Enviando..." : "Enviar inscrição"}
             </Button>
           </DialogFooter>
@@ -486,3 +365,4 @@ const AuditionsPage = () => {
 };
 
 export default AuditionsPage;
+
