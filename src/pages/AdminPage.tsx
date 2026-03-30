@@ -17,6 +17,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Check, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { buildBackendUrl, getBackendBaseUrl } from "@/lib/backend";
 
 const ABACATEPAY_KEYS = {
   dev: "abc_dev_wsc2xLB4mS4cjj2LX3DUryzY",
@@ -40,8 +41,7 @@ export default function AdminPage() {
 
   const checkBackendStatus = async () => {
     try {
-const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
-      const healthUrl = backendUrl.endsWith('/') ? `${backendUrl}health` : `${backendUrl}/health`;
+      const healthUrl = buildBackendUrl("/health");
       const response = await fetch(healthUrl);
       const data = await response.json();
       
@@ -280,7 +280,7 @@ const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
             </div>
             <div className="flex justify-between py-2 border-b border-slate-200">
               <span className="text-slate-600">Backend URL:</span>
-<span className="font-mono bg-slate-100 px-2 py-1 rounded">{import.meta.env.VITE_BACKEND_URL || "http://localhost:3001"}</span>
+<span className="font-mono bg-slate-100 px-2 py-1 rounded">{getBackendBaseUrl() || "/"}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-slate-200">
               <span className="text-slate-600">Modo Selecionado:</span>

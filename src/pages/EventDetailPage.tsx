@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PaymentReceipt from "@/components/PaymentReceipt";
+import { buildBackendUrl } from "@/lib/backend";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useState } from "react";
@@ -126,8 +127,7 @@ const EventDetailPage = () => {
     setCouponError(null);
 
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
-      const res = await fetch(`${backendUrl}/api/coupon/validate/${code.trim().toUpperCase()}`);
+      const res = await fetch(buildBackendUrl(`/api/coupon/validate/${code.trim().toUpperCase()}`));
       const result = await res.json();
 
       if (result.error || !result.data) {
@@ -282,8 +282,7 @@ const EventDetailPage = () => {
                 
                 // 3.5 - Confirmar a inscrição explicitamente (backup se trigger não funcionar)
                 try {
-                  const backendUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:3001`;
-                  const confirmRes = await fetch(`${backendUrl}/api/payment/${payment.id}/confirm`, {
+                  const confirmRes = await fetch(buildBackendUrl(`/api/payment/${payment.id}/confirm`), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                   });

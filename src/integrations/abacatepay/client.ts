@@ -1,6 +1,8 @@
 // AbacatePay API Client - v1.2
 // Integração direta com AbacatePay (Bearer token) para PIX e Cartão
 
+import { buildBackendUrl, getBackendBaseUrl } from "@/lib/backend";
+
 const API_BASE = "https://api.abacatepay.com";
 const API_VERSION = "v1";
 
@@ -98,7 +100,7 @@ class AbacatePay {
 // Detectar ambiente com suporte a Hostgator
       // Em dev: usa backend local para evitar CORS
       // Em prod: usa AbacatePay direto ou via backend em produção
-      const backendUrlEnv = import.meta.env.VITE_BACKEND_URL || "";
+      const backendUrlEnv = getBackendBaseUrl();
       const isLocalhost = typeof window !== "undefined" && (
         window.location.hostname === "localhost" || 
         window.location.hostname === "127.0.0.1" || 
@@ -112,9 +114,8 @@ class AbacatePay {
       let response: Response;
 
       if (useBackend) {
-// Usar backend URL configurado (local ou produção)
-        const finalBackendUrl = backendUrlEnv.endsWith('/') ? backendUrlEnv.slice(0, -1) : backendUrlEnv;
-        const paymentUrl = `${finalBackendUrl}/api/payment/create`;
+      // Usar backend URL configurado (local ou produção)
+        const paymentUrl = buildBackendUrl("/api/payment/create");
         
         console.log("📤 AbacatePay Request (via backend):", { endpoint, paymentUrl });
 
