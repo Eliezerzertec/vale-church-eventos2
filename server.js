@@ -25,6 +25,10 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI
 // Criar cliente Supabase
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ===== AbacatePay =====
+const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
+const ABACATEPAY_KEY = process.env.VITE_ABACATEPAY_KEY;
+
 // SDK não está funcionando, vamos usar fetch direto (já funciona perfeitamente)
 console.log('✅ Backend de pagamentos initializado');
 console.log('🔑 Chave API:', process.env.VITE_ABACATEPAY_KEY?.substring(0, 15) + '...');
@@ -99,9 +103,6 @@ app.post('/api/payment/create', async (req, res) => {
   }
 
   try {
-    const ABACATEPAY_API = 'https://api.abacatepay.com/v1';
-    const ABACATEPAY_KEY = process.env.VITE_ABACATEPAY_KEY;
-
     console.log(`📤 Criando cobrança...`);
     console.log('🔑 Chave:', ABACATEPAY_KEY?.substring(0, 15) + '...');
     console.log('Dados:', JSON.stringify(body, null, 2).substring(0, 200) + '...');
